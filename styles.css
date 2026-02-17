@@ -412,10 +412,6 @@ body {
   background: rgba(217, 119, 6, 0.08);
 }
 
-.dashboard-red .low-priority-card {
-  display: none;
-}
-
 .dashboard-green #alertState {
   color: #166534;
   font-weight: 700;

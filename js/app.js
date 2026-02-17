@@ -200,11 +200,13 @@
   function deriveCriticalAnnouncements(policy) {
     const announcements = [];
 
-    if (window.RPA.config.forceCriticalAnnouncement) {
-      announcements.push({
-        title: window.RPA.config.forcedAnnouncementTitle || "All MS Graph APIs are down."
-      });
+    if (!window.RPA.config.forceCriticalAnnouncement) {
+      return announcements;
     }
+
+    announcements.push({
+      title: window.RPA.config.forcedAnnouncementTitle || "All MS Graph APIs are down."
+    });
 
     if (policy.alertState === "RED") {
       announcements.push({
