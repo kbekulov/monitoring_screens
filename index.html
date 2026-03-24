@@ -26,39 +26,35 @@
         <span class="navbar-brand mb-0 h1 fs-5">RPA Mission Control</span>
       </div>
       <div class="navbar-ops">
-        <div class="nav-ops-row nav-ops-row-top">
-          <span class="kpi-pill time-pill">
-            <i class="bi bi-clock me-1"></i>
-            <span class="time-pill-label">Vilnius/LT</span>
-            <span id="asOfVilnius" class="time-pill-value">--:--:--</span>
-            <i id="asOfVilniusIcon" class="bi bi-sun-fill ms-2" aria-hidden="true"></i>
-          </span>
-          <span class="kpi-pill time-pill">
-            <i class="bi bi-clock-history me-1"></i>
-            <span class="time-pill-label">Costa Rica</span>
-            <span id="asOfCostaRica" class="time-pill-value">--:--:--</span>
-            <i id="asOfCostaRicaIcon" class="bi bi-sun-fill ms-2" aria-hidden="true"></i>
-          </span>
-          <div class="form-check form-switch kpi-pill toggle-pill mb-0 d-flex align-items-center gap-2">
-            <input class="form-check-input m-0" type="checkbox" role="switch" id="announcementToggle" aria-label="Turn on announcements">
-            <label class="form-check-label small fw-semibold" for="announcementToggle">Warnings banner</label>
-          </div>
-          <div class="form-check form-switch kpi-pill toggle-pill mb-0 d-flex align-items-center gap-2">
-            <input class="form-check-input m-0" type="checkbox" role="switch" id="freezeToggle" aria-label="Turn on freeze">
-            <label class="form-check-label small fw-semibold" for="freezeToggle">Freeze banner</label>
-          </div>
+        <span class="kpi-pill time-pill">
+          <i class="bi bi-clock me-1"></i>
+          <span class="time-pill-label">Vilnius/LT</span>
+          <span id="asOfVilnius" class="time-pill-value">--:--:--</span>
+          <i id="asOfVilniusIcon" class="bi bi-sun-fill ms-2" aria-hidden="true"></i>
+        </span>
+        <span class="kpi-pill time-pill">
+          <i class="bi bi-clock-history me-1"></i>
+          <span class="time-pill-label">Costa Rica</span>
+          <span id="asOfCostaRica" class="time-pill-value">--:--:--</span>
+          <i id="asOfCostaRicaIcon" class="bi bi-sun-fill ms-2" aria-hidden="true"></i>
+        </span>
+        <span class="kpi-pill failover-pill">
+          <span class="failover-pill-label">Chicago failover</span>
+          <span id="cdChicago" class="countdown countdown-inline">—</span>
+          <span class="failover-pill-target" id="chicagoTarget">Target: —</span>
+        </span>
+        <span class="kpi-pill failover-pill">
+          <span class="failover-pill-label">Reston failover</span>
+          <span id="cdReston" class="countdown countdown-inline">—</span>
+          <span class="failover-pill-target" id="restonTarget">Target: —</span>
+        </span>
+        <div class="form-check form-switch kpi-pill toggle-pill mb-0 d-flex align-items-center gap-2">
+          <input class="form-check-input m-0" type="checkbox" role="switch" id="announcementToggle" aria-label="Turn on announcements">
+          <label class="form-check-label small fw-semibold" for="announcementToggle">Warnings</label>
         </div>
-        <div class="nav-ops-row nav-ops-row-bottom">
-          <span class="kpi-pill failover-pill">
-            <span class="failover-pill-label">Chicago failover</span>
-            <span id="cdChicago" class="countdown countdown-inline">—</span>
-            <span class="failover-pill-target" id="chicagoTarget">Target: —</span>
-          </span>
-          <span class="kpi-pill failover-pill">
-            <span class="failover-pill-label">Reston failover</span>
-            <span id="cdReston" class="countdown countdown-inline">—</span>
-            <span class="failover-pill-target" id="restonTarget">Target: —</span>
-          </span>
+        <div class="form-check form-switch kpi-pill toggle-pill mb-0 d-flex align-items-center gap-2">
+          <input class="form-check-input m-0" type="checkbox" role="switch" id="freezeToggle" aria-label="Turn on freeze">
+          <label class="form-check-label small fw-semibold" for="freezeToggle">Freeze</label>
         </div>
       </div>
     </div>
