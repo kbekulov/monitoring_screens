@@ -69,7 +69,7 @@ body {
 }
 
 .time-pill {
-  width: 200px;
+  min-width: 190px;
   display: flex;
   align-items: center;
   justify-content: flex-start;
@@ -92,12 +92,39 @@ body {
   margin-left: 0.2rem;
 }
 
-.nav-ops-strip {
-  row-gap: 0.45rem;
+.navbar-shell {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 0.8rem 1rem;
+}
+
+.navbar-brand-strip {
+  min-width: max-content;
+}
+
+.navbar-ops {
+  min-width: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.nav-ops-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.nav-ops-row-top {
+  justify-content: flex-end;
+}
+
+.nav-ops-row-bottom {
+  justify-content: flex-end;
 }
 
 .failover-pill {
-  min-width: 210px;
+  min-width: 325px;
   display: grid;
   grid-template-columns: 1fr auto;
   align-items: center;
@@ -119,6 +146,7 @@ body {
 }
 
 .toggle-pill {
+  min-width: 168px;
   padding-right: 0.75rem;
 }
 
@@ -862,7 +890,7 @@ body {
 }
 
 .countdown-inline {
-  font-size: 0.9rem;
+  font-size: 0.84rem;
   letter-spacing: 0.02em;
   white-space: nowrap;
 }
@@ -964,14 +992,19 @@ body {
 }
 
 @media (max-width: 991.98px) {
-  .nav-ops-strip {
-    justify-content: flex-start !important;
+  .navbar-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .nav-ops-row-top,
+  .nav-ops-row-bottom {
+    justify-content: flex-start;
   }
 
   .time-pill,
+  .toggle-pill,
   .failover-pill {
     min-width: 0;
-    width: 100%;
   }
 
   .ops-banner {
@@ -1001,8 +1034,18 @@ body {
 }
 
 @media (max-width: 575.98px) {
-  .navbar .container-fluid {
-    gap: 0.75rem;
+  .nav-ops-row {
+    gap: 0.4rem;
+  }
+
+  .time-pill,
+  .toggle-pill,
+  .failover-pill {
+    width: 100%;
+  }
+
+  .countdown-inline {
+    font-size: 0.78rem;
   }
 
   .ops-banner {
