@@ -25,7 +25,7 @@
         <span class="badge rounded-pill text-bg-dark">RPA</span>
         <span class="navbar-brand mb-0 h1 fs-5">RPA Mission Control</span>
       </div>
-      <div class="d-flex gap-2 align-items-center">
+      <div class="nav-ops-strip d-flex gap-2 align-items-center flex-wrap justify-content-end">
         <span class="kpi-pill time-pill">
           <i class="bi bi-clock me-1"></i>
           <span class="time-pill-label">Vilnius/LT</span>
@@ -38,13 +38,23 @@
           <span id="asOfCostaRica" class="time-pill-value">--:--:--</span>
           <i id="asOfCostaRicaIcon" class="bi bi-sun-fill ms-2" aria-hidden="true"></i>
         </span>
-        <div class="form-check form-switch kpi-pill mb-0 d-flex align-items-center gap-2">
+        <span class="kpi-pill failover-pill">
+          <span class="failover-pill-label">Chicago failover</span>
+          <span id="cdChicago" class="countdown countdown-inline">—</span>
+          <span class="failover-pill-target" id="chicagoTarget">Target: —</span>
+        </span>
+        <span class="kpi-pill failover-pill">
+          <span class="failover-pill-label">Reston failover</span>
+          <span id="cdReston" class="countdown countdown-inline">—</span>
+          <span class="failover-pill-target" id="restonTarget">Target: —</span>
+        </span>
+        <div class="form-check form-switch kpi-pill toggle-pill mb-0 d-flex align-items-center gap-2">
           <input class="form-check-input m-0" type="checkbox" role="switch" id="announcementToggle" aria-label="Turn on announcements">
-          <label class="form-check-label small fw-semibold" for="announcementToggle">Turn on announcements</label>
+          <label class="form-check-label small fw-semibold" for="announcementToggle">Warnings banner</label>
         </div>
-        <div class="form-check form-switch kpi-pill mb-0 d-flex align-items-center gap-2">
+        <div class="form-check form-switch kpi-pill toggle-pill mb-0 d-flex align-items-center gap-2">
           <input class="form-check-input m-0" type="checkbox" role="switch" id="freezeToggle" aria-label="Turn on freeze">
-          <label class="form-check-label small fw-semibold" for="freezeToggle">Turn on freeze</label>
+          <label class="form-check-label small fw-semibold" for="freezeToggle">Freeze banner</label>
         </div>
       </div>
     </div>
@@ -211,29 +221,6 @@
             </div>
           </div>
 
-          <div class="col-12">
-            <div class="card section-neutral">
-              <div class="card-header">Failover Countdown <span class="mini-muted">[List + Table]</span></div>
-              <div class="card-body">
-                <div class="row g-3">
-                  <div class="col-12 col-md-6">
-                    <div class="p-3 bg-white border rounded-3">
-                      <div class="fw-semibold">Reston</div>
-                      <div id="cdReston" class="countdown mt-2">—</div>
-                      <div class="mini-muted" id="restonTarget">Target: —</div>
-                    </div>
-                  </div>
-                  <div class="col-12 col-md-6">
-                    <div class="p-3 bg-white border rounded-3">
-                      <div class="fw-semibold">Chicago</div>
-                      <div id="cdChicago" class="countdown mt-2">—</div>
-                      <div class="mini-muted" id="chicagoTarget">Target: —</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
 

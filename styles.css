@@ -92,6 +92,36 @@ body {
   margin-left: 0.2rem;
 }
 
+.nav-ops-strip {
+  row-gap: 0.45rem;
+}
+
+.failover-pill {
+  min-width: 210px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  column-gap: 0.65rem;
+  row-gap: 0.15rem;
+}
+
+.failover-pill-label {
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: #334155;
+}
+
+.failover-pill-target {
+  grid-column: 1 / -1;
+  font-size: 0.68rem;
+  line-height: 1.2;
+  color: #64748b;
+}
+
+.toggle-pill {
+  padding-right: 0.75rem;
+}
+
 .ops-banner-split {
   align-items: center;
 }
@@ -831,11 +861,25 @@ body {
   letter-spacing: 0.5px;
 }
 
+.countdown-inline {
+  font-size: 0.9rem;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
 .countdown .unit {
   color: var(--muted);
   font-size: 0.85rem;
   margin-left: 0.25rem;
   margin-right: 0.75rem;
+}
+
+.countdown-inline .unit {
+  font-size: 0.62rem;
+  margin-left: 0.18rem;
+  margin-right: 0.45rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .table > :not(caption) > * > * {
@@ -920,6 +964,16 @@ body {
 }
 
 @media (max-width: 991.98px) {
+  .nav-ops-strip {
+    justify-content: flex-start !important;
+  }
+
+  .time-pill,
+  .failover-pill {
+    min-width: 0;
+    width: 100%;
+  }
+
   .ops-banner {
     grid-template-columns: 1fr 1fr;
   }
@@ -947,6 +1001,10 @@ body {
 }
 
 @media (max-width: 575.98px) {
+  .navbar .container-fluid {
+    gap: 0.75rem;
+  }
+
   .ops-banner {
     grid-template-columns: 1fr;
   }
