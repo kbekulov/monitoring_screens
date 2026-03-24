@@ -111,10 +111,33 @@
   }
 
   function renderRobotCounts(model) {
-    setText("todayRunning", fmtInt(model.robots.today.running));
-    setText("todayRetired", fmtInt(model.robots.today.retired));
-    setText("ydayRunning", fmtInt(model.robots.yesterday.running));
-    setText("ydayRetired", fmtInt(model.robots.yesterday.retired));
+    const todayRunning = model.robots.today.running;
+    const todayRetired = model.robots.today.retired;
+    const ydayRunning = model.robots.yesterday.running;
+    const ydayRetired = model.robots.yesterday.retired;
+
+    setText("todayRunning", fmtInt(todayRunning));
+    setText("todayRetired", fmtInt(todayRetired));
+    setText("ydayRunning", fmtInt(ydayRunning));
+    setText("ydayRetired", fmtInt(ydayRetired));
+
+    function writeDelta(id, diff, positiveIsGood) {
+      const node = document.getElementById(id);
+      if (!node) return;
+      const abs = Math.abs(diff);
+      let label = "No change vs yesterday";
+      let cls = "neutral";
+      if (diff !== 0) {
+        const arrow = diff > 0 ? "▲" : "▼";
+        label = arrow + " " + abs + " vs yesterday";
+        cls = ((diff > 0) === positiveIsGood) ? "positive" : "negative";
+      }
+      node.className = "robot-status-delta " + cls;
+      node.textContent = label;
+    }
+
+    writeDelta("runningDelta", todayRunning - ydayRunning, true);
+    writeDelta("retiredDelta", todayRetired - ydayRetired, false);
   }
 
   function writeSummaries(summary) {

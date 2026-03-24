@@ -61,18 +61,12 @@
   </nav>
 
   <main class="container-fluid my-3" aria-label="RPA operations content">
-    <section class="ops-banner mb-3" aria-label="Dashboard health">
+    <section class="ops-banner ops-banner-top mb-3" aria-label="Dashboard health">
       <div class="ops-banner-item">
         <span class="dot ok"></span>
         <strong>Overall Health</strong>
         <span id="renderStatus">booting...</span>
-        <small class="ops-subtitle">total exceptions + total alerts + code health + SLA adherence</small>
-      </div>
-      <div class="ops-banner-item">
-        <span class="dot warn"></span>
-        <strong>Alert state</strong>
-        <span id="alertState">GREEN</span>
-        <small class="ops-subtitle">risk level of inaction on issues</small>
+        <small class="ops-subtitle">Alert state: <span id="alertState">GREEN</span> · total exceptions + code health + SLA adherence</small>
       </div>
       <div class="ops-banner-item">
         <span class="dot bad"></span>
@@ -99,6 +93,10 @@
         </div>
       </div>
     </section>
+    <section class="approval-strip mb-3" aria-label="Pending release approvals">
+      <div class="approval-strip-title">Pending release approvals</div>
+      <div id="releaseApprovalList" class="approval-strip-body">No release approvals are currently queued.</div>
+    </section>
     <section id="criticalAnnouncement" class="critical-announcement mb-3 d-none" aria-live="assertive" aria-label="Critical announcements">
       <div class="critical-announcement-label"><i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i><span>Warning</span></div>
       <div class="critical-announcement-divider" aria-hidden="true"></div>
@@ -109,39 +107,19 @@
       <div class="freeze-announcement-divider" aria-hidden="true"></div>
       <div class="freeze-announcement-text">Releases to Prod are forbidden</div>
     </section>
-    <section class="breach-secondary-grid mb-3" aria-label="Maintenance and potential attention">
-      <div class="breach-focus breach-focus-compact maintenance-panel">
-        <div class="breach-head maintenance-head">
-          <strong>Currently in Maintenance:</strong>
-          <div class="maintenance-legend" aria-label="Maintenance status legend">
-            <span class="maintenance-legend-item"><i class="bi bi-play-circle-fill status-icon status-running"></i> Running</span>
-            <span class="maintenance-legend-item"><i class="bi bi-pause-circle-fill status-icon status-retired"></i> Retired</span>
-          </div>
-        </div>
-        <div id="maintenanceProcesses" class="breach-chips"><span class="mini-muted">none</span></div>
-      </div>
-      <div class="breach-focus breach-focus-compact potential-panel">
-        <div class="breach-head potential-head">
-          <strong>Potentially attention required:</strong>
-          <div class="potential-legend" aria-label="Potential attention legend">
-            <span class="potential-legend-item"><i class="bi bi-graph-up-arrow status-icon status-many"></i> Many Exceptions</span>
-            <span class="potential-legend-item"><i class="bi bi-exclamation-octagon-fill status-icon status-session-fail"></i> Sessions Failing</span>
-          </div>
-        </div>
-        <div id="potentialProcesses" class="breach-chips"><span class="mini-muted">none</span></div>
-      </div>
-    </section>
-
-    <div class="row g-3">
+    <section class="row g-3 dashboard-main mb-4">
       <div class="col-12 col-xl-6">
         <div class="row g-3">
           <div class="col-12">
-            <div class="card section-critical">
-              <div class="card-header">Exception Concentration by Process <span class="mini-muted">[Last 14d]</span></div>
-              <div class="card-body">
-                <div id="heatmapChart" class="chart-wrap medium" role="img" aria-label="Heatmap of process exception concentration by day">Loading chart...</div>
-                <p id="summaryHeatmap" class="chart-summary" aria-live="polite">Summary loading...</p>
+            <div class="breach-focus breach-focus-compact maintenance-panel h-100">
+              <div class="breach-head maintenance-head">
+                <strong>Currently in Maintenance</strong>
+                <div class="maintenance-legend" aria-label="Maintenance status legend">
+                  <span class="maintenance-legend-item"><i class="bi bi-play-circle-fill status-icon status-running"></i> Running</span>
+                  <span class="maintenance-legend-item"><i class="bi bi-pause-circle-fill status-icon status-retired"></i> Retired</span>
+                </div>
               </div>
+              <div id="maintenanceProcesses" class="breach-chips"><span class="mini-muted">none</span></div>
             </div>
           </div>
 
@@ -155,7 +133,7 @@
                     <ul id="listMost" class="list-unstyled list-tight list-compact mb-0"><li class="mini-muted">Loading...</li></ul>
                   </div>
                   <div class="col-12 col-md-6">
-                    <div class="fw-semibold mb-2">Breaching Threshold <span class="kpi-pill ms-1">&gt;10% exceptions</span></div>
+                    <div class="fw-semibold mb-2">Breaching threshold <span class="kpi-pill ms-1">&gt;10% exceptions</span></div>
                     <ul id="listBreaching" class="list-unstyled list-tight list-compact mb-0"><li class="mini-muted">Loading...</li></ul>
                   </div>
                 </div>
@@ -163,69 +141,6 @@
             </div>
           </div>
 
-          <div class="col-12">
-            <div class="card section-neutral">
-              <div class="card-header d-flex align-items-center justify-content-between">
-                <div>Total Exceptions <span class="mini-muted">[Timelines]</span></div>
-                <div class="d-flex align-items-center gap-2">
-                  <div class="btn-group btn-group-sm" role="group" aria-label="Exceptions timeline mode">
-                    <button type="button" class="btn btn-outline-secondary exceptions-mode-btn active" data-mode="hourly">Hourly</button>
-                    <button type="button" class="btn btn-outline-secondary exceptions-mode-btn" data-mode="daily">Daily</button>
-                  </div>
-                </div>
-              </div>
-              <div class="card-body">
-                <p id="exceptionsActionReason" class="queue-action-reason">Rule check loading...</p>
-                <div class="row g-3">
-                  <div id="exceptionsHourlyView" class="col-12">
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                      <div class="fw-semibold">Hourly exceptions (today)</div>
-                      <div class="mini-muted">up to current hour</div>
-                    </div>
-                    <div class="chart-wrap short"><canvas id="hourlyLine" aria-label="Hourly exceptions line chart" role="img"></canvas></div>
-                    <p id="summaryHourly" class="chart-summary" aria-live="polite">Summary loading...</p>
-                  </div>
-                  <div id="exceptionsDailyView" class="col-12 d-none">
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                      <div class="fw-semibold">Daily exceptions (month)</div>
-                      <div class="mini-muted">up to today</div>
-                    </div>
-                    <div class="chart-wrap short"><canvas id="dailyLine" aria-label="Daily exceptions line chart" role="img"></canvas></div>
-                    <p id="summaryDaily" class="chart-summary" aria-live="polite">Summary loading...</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="col-12">
-            <div class="card section-neutral">
-              <div class="card-header d-flex align-items-center justify-content-between">
-                <div>Work Queue State Composition <span class="mini-muted">[5m Buckets]</span></div>
-              </div>
-              <div class="card-body">
-                <div class="chart-wrap tall"><canvas id="queueStateChart" aria-label="Work queue state composition chart" role="img"></canvas></div>
-                <p id="queueActionReason" class="queue-action-reason">Rule check loading...</p>
-                <p id="summaryQueueState" class="chart-summary" aria-live="polite">Summary loading...</p>
-              </div>
-            </div>
-          </div>
-
-          <div class="col-12">
-            <div class="card section-critical">
-              <div class="card-header">Root Cause Split <span class="mini-muted">[Day / Week / Month]</span></div>
-              <div class="card-body">
-                <div class="chart-wrap medium"><canvas id="rootCauseChart" aria-label="Root cause split chart" role="img"></canvas></div>
-                <p id="summaryRootCause" class="chart-summary" aria-live="polite">Summary loading...</p>
-              </div>
-            </div>
-          </div>
-
-        </div>
-      </div>
-
-      <div class="col-12 col-xl-6">
-        <div class="row g-3">
           <div class="col-12">
             <div class="card section-critical">
               <div class="card-header d-flex align-items-center justify-content-between">
@@ -253,43 +168,65 @@
           <div class="col-12">
             <div class="card section-neutral h-100">
               <div class="card-header d-flex align-items-center justify-content-between">
-                <div>Retired / Running <span class="mini-muted">[Nested Donut]</span></div>
+                <div>Robot State Counts <span class="mini-muted">[Daily Delta]</span></div>
                 <span id="donutActionBadge" class="queue-action-badge queue-action-stable">Stable</span>
               </div>
               <div class="card-body">
-                <div class="donut-panel">
-                  <div class="donut-stage">
-                    <div class="chart-wrap donut-box donut-chart-wrap">
-                      <canvas id="nestedDonut" aria-label="Nested donut for running and retired robots" role="img"></canvas>
-                      <div class="donut-center-label">today</div>
-                    </div>
-                    <div class="donut-ring-note">Outer ring: yesterday</div>
+                <div class="d-none">
+                  <div class="chart-wrap donut-box donut-chart-wrap">
+                    <canvas id="nestedDonut" aria-label="Nested donut for running and retired robots" role="img"></canvas>
+                    <div class="donut-center-label">today</div>
                   </div>
-
-                  <div class="donut-stats">
-                    <div class="donut-stats-title">Robot state counts</div>
-                    <div id="donutDeltaText" class="queue-action-reason mt-0 mb-2">Delta loading...</div>
-                    <div class="donut-stat-grid">
-                      <div class="donut-stat-item">
-                        <span class="donut-stat-label">Today running</span>
-                        <strong id="todayRunning">—</strong>
-                      </div>
-                      <div class="donut-stat-item">
-                        <span class="donut-stat-label">Today retired</span>
-                        <strong id="todayRetired">—</strong>
-                      </div>
-                      <div class="donut-stat-item">
-                        <span class="donut-stat-label">Yesterday running</span>
-                        <strong id="ydayRunning">—</strong>
-                      </div>
-                      <div class="donut-stat-item">
-                        <span class="donut-stat-label">Yesterday retired</span>
-                        <strong id="ydayRetired">—</strong>
-                      </div>
-                    </div>
+                </div>
+                <div id="donutDeltaText" class="queue-action-reason mt-0 mb-3">Delta loading...</div>
+                <div class="robot-status-grid">
+                  <div class="robot-status-card">
+                    <span class="robot-status-label">Running today</span>
+                    <strong id="todayRunning" class="robot-status-value">—</strong>
+                    <span id="runningDelta" class="robot-status-delta neutral">--</span>
+                  </div>
+                  <div class="robot-status-card">
+                    <span class="robot-status-label">Retired today</span>
+                    <strong id="todayRetired" class="robot-status-value">—</strong>
+                    <span id="retiredDelta" class="robot-status-delta neutral">--</span>
+                  </div>
+                  <div class="robot-status-card">
+                    <span class="robot-status-label">Running yesterday</span>
+                    <strong id="ydayRunning" class="robot-status-value">—</strong>
+                  </div>
+                  <div class="robot-status-card">
+                    <span class="robot-status-label">Retired yesterday</span>
+                    <strong id="ydayRetired" class="robot-status-value">—</strong>
                   </div>
                 </div>
                 <p id="summaryDonut" class="chart-summary" aria-live="polite">Summary loading...</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-12 col-xl-6">
+        <div class="row g-3">
+          <div class="col-12">
+            <div class="breach-focus breach-focus-compact potential-panel h-100">
+              <div class="breach-head potential-head">
+                <strong>Potentially Attention Required</strong>
+                <div class="potential-legend" aria-label="Potential attention legend">
+                  <span class="potential-legend-item"><i class="bi bi-graph-up-arrow status-icon status-many"></i> Many Exceptions</span>
+                  <span class="potential-legend-item"><i class="bi bi-exclamation-octagon-fill status-icon status-session-fail"></i> Sessions Failing</span>
+                </div>
+              </div>
+              <div id="potentialProcesses" class="breach-chips"><span class="mini-muted">none</span></div>
+            </div>
+          </div>
+
+          <div class="col-12">
+            <div class="card section-critical">
+              <div class="card-header">Cumulative Session Anomaly <span class="mini-muted">[Anomaly Band]</span></div>
+              <div class="card-body">
+                <div class="chart-wrap medium"><canvas id="burstChart" aria-label="Burst detector chart with anomaly band" role="img"></canvas></div>
+                <p id="summaryBurst" class="chart-summary" aria-live="polite">Summary loading...</p>
               </div>
             </div>
           </div>
@@ -297,7 +234,7 @@
           <div class="col-12">
             <div class="card section-critical">
               <div class="card-header d-flex justify-content-between align-items-center">
-                <div>Alerts + Tickets by Squad <span class="mini-muted">[Dumbbell Chart]</span></div>
+                <div>Alerts by Squad <span class="mini-muted">[Actionable vs nonactionable]</span></div>
                 <div class="d-flex align-items-center gap-3">
                   <div class="mini-muted"><span class="legend-dot-black"></span>last month</div>
                   <div class="mini-muted"><span class="legend-dot-white"></span>today</div>
@@ -312,7 +249,7 @@
 
           <div class="col-12">
             <div class="card section-neutral">
-              <div class="card-header">Top Alerts + Tickets <span class="mini-muted">[List + Table]</span></div>
+              <div class="card-header">Top Alerts + Tickets <span class="mini-muted">[breach + hold time + weekends/holidays]</span></div>
               <div class="card-body">
                 <div id="alertsRiskStrip" class="alerts-risk-strip mb-3">
                   <div class="alerts-risk-item risk-breached">
@@ -345,19 +282,81 @@
               </div>
             </div>
           </div>
+        </div>
+      </div>
+    </section>
 
-          <div class="col-12">
-            <div class="card section-critical">
-              <div class="card-header">Exception Burst Detector <span class="mini-muted">[Anomaly Band]</span></div>
-              <div class="card-body">
-                <div class="chart-wrap medium"><canvas id="burstChart" aria-label="Burst detector chart with anomaly band" role="img"></canvas></div>
-                <p id="summaryBurst" class="chart-summary" aria-live="polite">Summary loading...</p>
+    <section class="supplemental-grid" aria-label="Additional analysis">
+      <div class="row g-3">
+        <div class="col-12">
+          <div class="card section-critical">
+            <div class="card-header">Exception Concentration by Process <span class="mini-muted">[Last 14d]</span></div>
+            <div class="card-body">
+              <div id="heatmapChart" class="chart-wrap medium" role="img" aria-label="Heatmap of process exception concentration by day">Loading chart...</div>
+              <p id="summaryHeatmap" class="chart-summary" aria-live="polite">Summary loading...</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-12 col-xl-4">
+          <div class="card section-neutral">
+            <div class="card-header d-flex align-items-center justify-content-between">
+              <div>Total Exceptions <span class="mini-muted">[Timelines]</span></div>
+              <div class="d-flex align-items-center gap-2">
+                <div class="btn-group btn-group-sm" role="group" aria-label="Exceptions timeline mode">
+                  <button type="button" class="btn btn-outline-secondary exceptions-mode-btn active" data-mode="hourly">Hourly</button>
+                  <button type="button" class="btn btn-outline-secondary exceptions-mode-btn" data-mode="daily">Daily</button>
+                </div>
+              </div>
+            </div>
+            <div class="card-body">
+              <p id="exceptionsActionReason" class="queue-action-reason">Rule check loading...</p>
+              <div class="row g-3">
+                <div id="exceptionsHourlyView" class="col-12">
+                  <div class="d-flex justify-content-between align-items-center mb-2">
+                    <div class="fw-semibold">Hourly exceptions (today)</div>
+                    <div class="mini-muted">up to current hour</div>
+                  </div>
+                  <div class="chart-wrap short"><canvas id="hourlyLine" aria-label="Hourly exceptions line chart" role="img"></canvas></div>
+                  <p id="summaryHourly" class="chart-summary" aria-live="polite">Summary loading...</p>
+                </div>
+                <div id="exceptionsDailyView" class="col-12 d-none">
+                  <div class="d-flex justify-content-between align-items-center mb-2">
+                    <div class="fw-semibold">Daily exceptions (month)</div>
+                    <div class="mini-muted">up to today</div>
+                  </div>
+                  <div class="chart-wrap short"><canvas id="dailyLine" aria-label="Daily exceptions line chart" role="img"></canvas></div>
+                  <p id="summaryDaily" class="chart-summary" aria-live="polite">Summary loading...</p>
+                </div>
               </div>
             </div>
           </div>
         </div>
+
+        <div class="col-12 col-xl-4">
+          <div class="card section-neutral">
+            <div class="card-header d-flex align-items-center justify-content-between">
+              <div>Work Queue State Composition <span class="mini-muted">[5m Buckets]</span></div>
+            </div>
+            <div class="card-body">
+              <div class="chart-wrap tall"><canvas id="queueStateChart" aria-label="Work queue state composition chart" role="img"></canvas></div>
+              <p id="queueActionReason" class="queue-action-reason">Rule check loading...</p>
+              <p id="summaryQueueState" class="chart-summary" aria-live="polite">Summary loading...</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-12 col-xl-4">
+          <div class="card section-critical">
+            <div class="card-header">Root Cause Split <span class="mini-muted">[Day / Week / Month]</span></div>
+            <div class="card-body">
+              <div class="chart-wrap medium"><canvas id="rootCauseChart" aria-label="Root cause split chart" role="img"></canvas></div>
+              <p id="summaryRootCause" class="chart-summary" aria-live="polite">Summary loading...</p>
+            </div>
+          </div>
+        </div>
       </div>
-    </div>
+    </section>
   </main>
 
   <script defer src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
