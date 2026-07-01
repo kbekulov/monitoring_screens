@@ -1,23 +1,13 @@
 using System.Globalization;
+using Microsoft.EntityFrameworkCore;
+using MonitoringScreens.Blazor.Data;
 using MonitoringScreens.Blazor.Models;
 
 namespace MonitoringScreens.Blazor.Services;
 
-public sealed class DashboardService
+public sealed class DashboardService(MonitoringDbContext db)
 {
-    private static readonly string[] ExceptionCatalogNames =
-    [
-        "WinSCP: Failed to Upload File",
-        "MS Graph: failed to create email draft",
-        "You must provide values for Folder and Pattern",
-        "7 Zip: Wrong Password",
-        "Could not execute code stage because exception thrown by code stage: cannot find Column",
-        "Failed to Attach on Navigation Stage \"Attach\"",
-        "Business rule mismatch: duplicate case",
-        "Invoice missing approval code"
-    ];
-
-    private static readonly (string Name, string Type)[] ExceptionCatalog =
+    private static readonly (string Name, string Type)[] FallbackExceptionCatalog =
     [
         ("WinSCP: Failed to Upload File", "system"),
         ("MS Graph: failed to create email draft", "system"),
@@ -29,7 +19,7 @@ public sealed class DashboardService
         ("Invoice missing approval code", "business")
     ];
 
-    private static readonly string[] ProcessPool =
+    private static readonly string[] FallbackProcessPool =
     [
         "Care Digital Refunds",
         "GFC Case Investigation",
@@ -48,6 +38,16 @@ public sealed class DashboardService
         "Loan Servicing Exception Handler"
     ];
 
+    private static readonly string[] FallbackSquadPool =
+    [
+        "Baymax",
+        "WALL-E",
+        "ATOM",
+        "Awesom-O",
+        "JARVIS",
+        "Bender"
+    ];
+
     private static readonly DashboardThresholds Thresholds = new();
 
     public DashboardSnapshot BuildSnapshot(DateTimeOffset nowUtc, DashboardOptions options)
@@ -55,15 +55,16 @@ public sealed class DashboardService
         var vilniusNow = ConvertToZone(nowUtc, "Europe/Vilnius");
         var seed = options.Seed ?? int.Parse(vilniusNow.ToString("yyyyMMdd", CultureInfo.InvariantCulture), CultureInfo.InvariantCulture);
         var rng = new Mulberry32(seed);
-        var model = BuildModel(vilniusNow, seed, rng);
+        var catalog = LoadCatalog();
+        var model = BuildModel(vilniusNow, seed, rng, catalog);
         var slopeStats = GetSlopeStats(model, "yesterday");
         var summaries = BuildSummaries(model, slopeStats);
         var policy = EvaluateAlertPolicy(model);
         var breachList = DeriveBreachProcesses(model);
         var maintenanceProcesses = PickBalanced(breachList.Where(x => x.InMaintenance).ToList(), 7, x => x.Status.Equals("retired", StringComparison.OrdinalIgnoreCase));
         var potentialProcesses = PickBalanced(breachList.Where(x => !x.InMaintenance).ToList(), 7, x => x.AttentionType == "SESSIONS_FAILING");
-        var restonFailover = new FailoverInfo("Reston failover", "America/New_York", MakeFailoverTarget(nowUtc, "America/New_York", 2));
-        var chicagoFailover = new FailoverInfo("Chicago failover", "America/Chicago", MakeFailoverTarget(nowUtc, "America/Chicago", 3));
+        var restonFailover = new FailoverInfo("Reston failover", "America/New_York", MakeFailoverTarget(nowUtc, "America/New_York", catalog.RestonFailoverDays));
+        var chicagoFailover = new FailoverInfo("Chicago failover", "America/Chicago", MakeFailoverTarget(nowUtc, "America/Chicago", catalog.ChicagoFailoverDays));
         var warnings = DeriveAnnouncements(options, policy.AlertState, nowUtc, restonFailover, chicagoFailover);
         var queueAction = DeriveQueueAction(model);
         var exceptionsAction = DeriveExceptionsAction(model);
@@ -180,9 +181,54 @@ public sealed class DashboardService
         return TimeZoneInfo.ConvertTime(timestamp, tz);
     }
 
-    private static DashboardModel BuildModel(DateTimeOffset nowLocal, int seed, Mulberry32 rng)
+    private DashboardCatalog LoadCatalog()
     {
-        var exceptionStats = ExceptionCatalog.Select((entry, index) =>
+        var exceptionCatalog = db.ExceptionDefinitions
+            .AsNoTracking()
+            .Where(x => x.IsActive)
+            .OrderBy(x => x.SortOrder)
+            .ThenBy(x => x.Name)
+            .Select(x => new ExceptionCatalogItem(x.Name, x.Type))
+            .ToList();
+
+        var processPool = db.ProcessDefinitions
+            .AsNoTracking()
+            .Where(x => x.IsActive)
+            .OrderBy(x => x.SortOrder)
+            .ThenBy(x => x.Name)
+            .Select(x => x.Name)
+            .ToList();
+
+        var squadPool = db.SquadDefinitions
+            .AsNoTracking()
+            .Where(x => x.IsActive)
+            .OrderBy(x => x.SortOrder)
+            .ThenBy(x => x.Name)
+            .Select(x => x.Name)
+            .ToList();
+
+        var settings = db.DashboardSettings
+            .AsNoTracking()
+            .ToDictionary(x => x.Key, x => x.Value, StringComparer.OrdinalIgnoreCase);
+
+        return new DashboardCatalog(
+            exceptionCatalog.Count > 0
+                ? exceptionCatalog
+                : FallbackExceptionCatalog.Select(x => new ExceptionCatalogItem(x.Name, x.Type)).ToList(),
+            processPool.Count > 0 ? processPool : FallbackProcessPool.ToList(),
+            squadPool.Count > 0 ? squadPool : FallbackSquadPool.ToList(),
+            ReadIntSetting(settings, "Failover.Chicago.DaysFromNow", 3),
+            ReadIntSetting(settings, "Failover.Reston.DaysFromNow", 2));
+    }
+
+    private static int ReadIntSetting(IReadOnlyDictionary<string, string> settings, string key, int fallback) =>
+        settings.TryGetValue(key, out var rawValue) && int.TryParse(rawValue, CultureInfo.InvariantCulture, out var value)
+            ? value
+            : fallback;
+
+    private static DashboardModel BuildModel(DateTimeOffset nowLocal, int seed, Mulberry32 rng, DashboardCatalog catalog)
+    {
+        var exceptionStats = catalog.Exceptions.Select((entry, index) =>
         {
             var yesterdayCount = rng.NextInt(4, 26);
             var todayCount = Math.Max(0, yesterdayCount + (int)Math.Floor((rng.NextDouble() - 0.5) * 12));
@@ -212,9 +258,8 @@ public sealed class DashboardService
         var yesterdayRobots = new RobotState(rng.NextInt(60, 90), rng.NextInt(25, 45));
         var todayRobots = new RobotState(rng.NextInt(60, 90), rng.NextInt(10, 30));
 
-        var squads = new[] { "Baymax", "WALL-E", "ATOM", "Awesom-O", "JARVIS", "Bender" };
-        var invertSet = Shuffle(squads, rng).Take(2).ToHashSet();
-        var squadDumbbell = squads.Select(squad =>
+        var invertSet = Shuffle(catalog.Squads, rng).Take(2).ToHashSet();
+        var squadDumbbell = catalog.Squads.Select(squad =>
         {
             var lastMonth = rng.NextInt(40, 200);
             var today = Math.Max(5, (int)Math.Round(lastMonth * (0.75 + rng.NextDouble() * 0.7)));
@@ -250,12 +295,12 @@ public sealed class DashboardService
             Enumerable.Range(0, 5).Select(_ => rng.NextInt(0, 2)).ToList(),
             Enumerable.Range(0, 5).Select(_ => rng.NextInt(0, 3)).ToList());
 
-        var highPriority = ExceptionCatalog.Where(x => x.Type is "system" or "internal").Select(x => x.Name).ToArray();
+        var highPriority = catalog.Exceptions.Where(x => x.Type is "system" or "internal").Select(x => x.Name).ToArray();
         var alerts = Enumerable.Range(1, 10)
             .Select(i => $"Alert #{i} - {highPriority[rng.NextInt(0, highPriority.Length)]}")
             .ToList();
 
-        var processPool = Shuffle(ProcessPool, rng).ToList();
+        var processPool = Shuffle(catalog.Processes, rng).ToList();
         var ticketProcesses = processPool.Take(5).ToArray();
         var tickets = new List<TicketItem>
         {
@@ -722,6 +767,15 @@ public sealed class DashboardService
         public int BurstAmber { get; } = 1;
         public int BurstRed { get; } = 3;
     }
+
+    private sealed record ExceptionCatalogItem(string Name, string Type);
+
+    private sealed record DashboardCatalog(
+        IReadOnlyList<ExceptionCatalogItem> Exceptions,
+        IReadOnlyList<string> Processes,
+        IReadOnlyList<string> Squads,
+        int ChicagoFailoverDays,
+        int RestonFailoverDays);
 
     private sealed class Mulberry32(int seed)
     {
