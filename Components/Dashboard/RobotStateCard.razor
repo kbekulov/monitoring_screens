@@ -1,0 +1,36 @@
+<div class="card section-neutral h-100">
+    <div class="card-header d-flex align-items-center justify-content-between">
+        <div>Robot State Counts <span class="mini-muted">[Daily Delta]</span></div>
+        <span class="queue-action-badge @(DashboardFormatters.RobotDeltaBadgeClass(Snapshot))">@DashboardFormatters.RobotDeltaBadge(Snapshot)</span>
+    </div>
+    <div class="card-body">
+        <div class="queue-action-reason mt-0 mb-3">@Snapshot.Summaries.RobotCounts</div>
+        <div class="robot-status-grid">
+            <div class="robot-status-card">
+                <span class="robot-status-label">Running today</span>
+                <strong class="robot-status-value">@Snapshot.Model.Robots.Today.Running</strong>
+                <span class="robot-status-delta @DashboardFormatters.DeltaClass(RunningDelta, true)">@DashboardFormatters.DeltaText(RunningDelta)</span>
+            </div>
+            <div class="robot-status-card">
+                <span class="robot-status-label">Retired today</span>
+                <strong class="robot-status-value">@Snapshot.Model.Robots.Today.Retired</strong>
+                <span class="robot-status-delta @DashboardFormatters.DeltaClass(RetiredDelta, false)">@DashboardFormatters.DeltaText(RetiredDelta)</span>
+            </div>
+            <div class="robot-status-card">
+                <span class="robot-status-label">Running yesterday</span>
+                <strong class="robot-status-value">@Snapshot.Model.Robots.Yesterday.Running</strong>
+            </div>
+            <div class="robot-status-card">
+                <span class="robot-status-label">Retired yesterday</span>
+                <strong class="robot-status-value">@Snapshot.Model.Robots.Yesterday.Retired</strong>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public DashboardSnapshot Snapshot { get; set; } = default!;
+
+    private int RunningDelta => Snapshot.Model.Robots.Today.Running - Snapshot.Model.Robots.Yesterday.Running;
+    private int RetiredDelta => Snapshot.Model.Robots.Today.Retired - Snapshot.Model.Robots.Yesterday.Retired;
+}

@@ -1,0 +1,29 @@
+<div class="card section-critical">
+    <div class="card-header d-flex align-items-center justify-content-between">
+        <div>Top Common Exceptions <span class="mini-muted">[Slope Graph]</span></div>
+        <div class="btn-group btn-group-sm" role="group" aria-label="Slope compare mode">
+            <button type="button" class="btn btn-outline-secondary slope-mode-btn @(Mode == "yesterday" ? "active" : null)" @onclick='() => SetMode("yesterday")'>Today vs Yesterday</button>
+            <button type="button" class="btn btn-outline-secondary slope-mode-btn @(Mode == "week" ? "active" : null)" @onclick='() => SetMode("week")'>Today vs 7d Avg</button>
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="slope-kpis">
+            <span class="slope-kpi improve">Improved ▼ <strong>@Stats.Improved</strong></span>
+            <span class="slope-kpi worsen">Worsened ▲ <strong>@Stats.Worsened</strong></span>
+            <span class="slope-kpi stable">Unchanged: <strong>@Stats.Unchanged</strong></span>
+            <span class="slope-kpi new">New today: <strong>@Stats.NewToday</strong></span>
+            <span class="slope-kpi resolved">Resolved: <strong>@Stats.Resolved</strong></span>
+        </div>
+        <div class="slope-legend-note">@Summary</div>
+        <PlotlyChart Data="PlotlyChartFactory.BuildSlopeChartData(Stats, Mode)" Layout="PlotlyChartFactory.BuildSlopeLayout(Stats)" Config="PlotlyChartFactory.Config" Style="height:340px;" />
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public SlopeStats Stats { get; set; } = default!;
+    [Parameter, EditorRequired] public string Mode { get; set; } = "yesterday";
+    [Parameter, EditorRequired] public string Summary { get; set; } = "";
+    [Parameter] public EventCallback<string> ModeChanged { get; set; }
+
+    private Task SetMode(string mode) => ModeChanged.InvokeAsync(mode);
+}

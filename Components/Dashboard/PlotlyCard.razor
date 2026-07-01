@@ -1,0 +1,25 @@
+<div class="card @SectionClass">
+    <div class="card-header">@Title <span class="mini-muted">@Subtitle</span></div>
+    <div class="card-body">
+        @if (!string.IsNullOrWhiteSpace(LeadText))
+        {
+            <p class="queue-action-reason">@LeadText</p>
+        }
+        <PlotlyChart Data="Data" Layout="Layout" Config="PlotlyChartFactory.Config" Style="@ChartStyle" />
+        @if (!string.IsNullOrWhiteSpace(Summary))
+        {
+            <p class="chart-summary">@Summary</p>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string Title { get; set; } = "";
+    [Parameter, EditorRequired] public string Subtitle { get; set; } = "";
+    [Parameter, EditorRequired] public IReadOnlyList<object> Data { get; set; } = [];
+    [Parameter, EditorRequired] public object Layout { get; set; } = default!;
+    [Parameter] public string SectionClass { get; set; } = "section-neutral";
+    [Parameter] public string ChartStyle { get; set; } = "height:300px;";
+    [Parameter] public string? Summary { get; set; }
+    [Parameter] public string? LeadText { get; set; }
+}

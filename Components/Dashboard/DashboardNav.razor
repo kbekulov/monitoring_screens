@@ -1,0 +1,70 @@
+<nav class="navbar navbar-expand-lg bg-white border-bottom sticky-top" aria-label="Top navigation">
+    <div class="container-fluid py-2 navbar-shell">
+        <div class="navbar-brand-strip d-flex align-items-center gap-2">
+            <span class="badge rounded-pill text-bg-dark">RPA</span>
+            <span class="navbar-brand mb-0 h1 fs-5">RPA Mission Control</span>
+        </div>
+        <div class="navbar-ops">
+            <span class="kpi-pill time-pill">
+                <i class="bi bi-clock me-1"></i>
+                <span class="time-pill-label">Vilnius/LT</span>
+                <span class="time-pill-value">@VilniusClock.TimeText</span>
+                <i class="bi @(VilniusClock.IsDay ? "bi-sun-fill" : "bi-moon-stars-fill") ms-2" aria-hidden="true"></i>
+            </span>
+            <span class="kpi-pill time-pill">
+                <i class="bi bi-clock-history me-1"></i>
+                <span class="time-pill-label">Costa Rica</span>
+                <span class="time-pill-value">@CostaRicaClock.TimeText</span>
+                <i class="bi @(CostaRicaClock.IsDay ? "bi-sun-fill" : "bi-moon-stars-fill") ms-2" aria-hidden="true"></i>
+            </span>
+            <span class="kpi-pill failover-pill">
+                <span class="failover-pill-label">Chicago failover</span>
+                <span class="countdown countdown-inline">
+                    <span class="fw-semibold">@($"{ChicagoCountdown.Days:00}")</span><span class="unit">days</span>
+                    <span class="fw-semibold">@($"{ChicagoCountdown.Hours:00}")</span><span class="unit">hours</span>
+                    <span class="fw-semibold">@($"{ChicagoCountdown.Minutes:00}")</span><span class="unit">min</span>
+                </span>
+            </span>
+            <span class="kpi-pill failover-pill">
+                <span class="failover-pill-label">Reston failover</span>
+                <span class="countdown countdown-inline">
+                    <span class="fw-semibold">@($"{RestonCountdown.Days:00}")</span><span class="unit">days</span>
+                    <span class="fw-semibold">@($"{RestonCountdown.Hours:00}")</span><span class="unit">hours</span>
+                    <span class="fw-semibold">@($"{RestonCountdown.Minutes:00}")</span><span class="unit">min</span>
+                </span>
+            </span>
+            <div class="form-check form-switch kpi-pill toggle-pill mb-0 d-flex align-items-center gap-2">
+                <InputCheckbox class="form-check-input m-0" Value="ForceWarnings" ValueChanged="OnWarningsChanged" ValueExpression="() => ForceWarnings" />
+                <label class="form-check-label small fw-semibold">Warnings</label>
+            </div>
+            <div class="form-check form-switch kpi-pill toggle-pill mb-0 d-flex align-items-center gap-2">
+                <InputCheckbox class="form-check-input m-0" Value="ForceFreeze" ValueChanged="OnFreezeChanged" ValueExpression="() => ForceFreeze" />
+                <label class="form-check-label small fw-semibold">Freeze</label>
+            </div>
+        </div>
+    </div>
+</nav>
+
+@code {
+    [Parameter, EditorRequired] public ClockDisplay VilniusClock { get; set; } = new("", false);
+    [Parameter, EditorRequired] public ClockDisplay CostaRicaClock { get; set; } = new("", false);
+    [Parameter, EditorRequired] public CountdownDisplay ChicagoCountdown { get; set; } = new(0, 0, 0);
+    [Parameter, EditorRequired] public CountdownDisplay RestonCountdown { get; set; } = new(0, 0, 0);
+    [Parameter] public bool ForceWarnings { get; set; }
+    [Parameter] public EventCallback<bool> ForceWarningsChanged { get; set; }
+    [Parameter] public bool ForceFreeze { get; set; }
+    [Parameter] public EventCallback<bool> ForceFreezeChanged { get; set; }
+    [Parameter] public EventCallback OptionsChanged { get; set; }
+
+    private async Task OnWarningsChanged(bool value)
+    {
+        await ForceWarningsChanged.InvokeAsync(value);
+        await OptionsChanged.InvokeAsync();
+    }
+
+    private async Task OnFreezeChanged(bool value)
+    {
+        await ForceFreezeChanged.InvokeAsync(value);
+        await OptionsChanged.InvokeAsync();
+    }
+}

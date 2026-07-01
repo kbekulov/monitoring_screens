@@ -1,0 +1,45 @@
+<div class="breach-focus breach-focus-compact @PanelClass h-100">
+    <div class="breach-head @HeadClass">
+        <strong>@Title</strong>
+        <div class="@LegendClass">
+            @foreach (var item in Legend)
+            {
+                <span class="@LegendItemClass"><i class="bi @item.IconClass"></i> @item.Label</span>
+            }
+        </div>
+    </div>
+    <div class="breach-chips">
+        @foreach (var item in Items)
+        {
+            <span class="breach-chip @ChipClass(item)">
+                <i class="bi @IconClass(item)"></i>
+                @item.Process
+            </span>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string Title { get; set; } = "";
+    [Parameter, EditorRequired] public IReadOnlyList<ProcessFocusItem> Items { get; set; } = [];
+    [Parameter, EditorRequired] public FocusPanelKind Kind { get; set; }
+
+    private string PanelClass => Kind == FocusPanelKind.Maintenance ? "maintenance-panel" : "potential-panel";
+    private string HeadClass => Kind == FocusPanelKind.Maintenance ? "maintenance-head" : "potential-head";
+    private string LegendClass => Kind == FocusPanelKind.Maintenance ? "maintenance-legend" : "potential-legend";
+    private string LegendItemClass => Kind == FocusPanelKind.Maintenance ? "maintenance-legend-item" : "potential-legend-item";
+
+    private IReadOnlyList<LegendItem> Legend => Kind == FocusPanelKind.Maintenance
+        ? [new("bi-play-circle-fill status-icon status-running", "Running"), new("bi-pause-circle-fill status-icon status-retired", "Retired")]
+        : [new("bi-graph-up-arrow status-icon status-many", "Many Exceptions"), new("bi-exclamation-octagon-fill status-icon status-session-fail", "Sessions Failing")];
+
+    private string ChipClass(ProcessFocusItem item) => Kind == FocusPanelKind.Maintenance
+        ? $"maintenance-chip {(item.Status == "retired" ? "maintenance-retired" : "maintenance-running")}"
+        : $"potential-chip {(item.AttentionType == "SESSIONS_FAILING" ? "potential-session-fail" : "potential-many")}";
+
+    private string IconClass(ProcessFocusItem item) => Kind == FocusPanelKind.Maintenance
+        ? item.Status == "retired" ? "bi-pause-circle-fill status-icon status-retired" : "bi-play-circle-fill status-icon status-running"
+        : item.AttentionType == "SESSIONS_FAILING" ? "bi-exclamation-octagon-fill status-icon status-session-fail" : "bi-graph-up-arrow status-icon status-many";
+
+    private sealed record LegendItem(string IconClass, string Label);
+}
