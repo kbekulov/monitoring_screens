@@ -681,7 +681,7 @@ else
     private static IReadOnlyList<object> BuildHeatmapData(DashboardSnapshot snapshot)
     {
         var processes = snapshot.Model.OutOfBoundsHeatmap.Processes.Take(6).ToArray();
-        var days = snapshot.Model.OutOfBoundsHeatmap.Days.ToArray();
+        var days = Enumerable.Range(1, 14).Select(day => $"Day {day}").ToArray();
         var z = processes
             .Select((_, processIndex) => days
                 .Select((_, dayIndex) =>
@@ -722,7 +722,7 @@ else
         margin = new { l = 150, r = 20, t = 10, b = 40 },
         paper_bgcolor = "rgba(0,0,0,0)",
         plot_bgcolor = "rgba(0,0,0,0)",
-        xaxis = new { tickangle = -35 },
+        xaxis = new { type = "category", tickangle = -35, automargin = true },
         yaxis = new { automargin = true }
     };
 
