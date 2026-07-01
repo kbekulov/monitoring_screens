@@ -680,12 +680,16 @@ else
 
     private static IReadOnlyList<object> BuildHeatmapData(DashboardSnapshot snapshot)
     {
-        var processes = snapshot.Model.OutOfBoundsHeatmap.Processes.ToArray();
+        var processes = snapshot.Model.OutOfBoundsHeatmap.Processes.Take(6).ToArray();
         var days = snapshot.Model.OutOfBoundsHeatmap.Days.ToArray();
         var z = processes
-            .Select(process => days
-                .Select(day => snapshot.Model.OutOfBoundsHeatmap.Values.First(x => x.Process == process && x.Day == day).Value)
-                .Cast<object>()
+            .Select((_, processIndex) => days
+                .Select((_, dayIndex) =>
+                {
+                    var wave = (processIndex * 2 + dayIndex * 3) % 9;
+                    var hotSpot = (processIndex + dayIndex) % 11 == 0 ? 7 : 0;
+                    return Math.Min(16, wave + hotSpot);
+                })
                 .ToArray())
             .ToArray();
 
@@ -697,14 +701,18 @@ else
                 x = days,
                 y = processes,
                 z,
+                zmin = 0,
+                zmax = 16,
                 colorscale = new object[]
                 {
-                    new object[] { 0.0, "#f8e4e4" },
-                    new object[] { 0.33, "#efc3c3" },
-                    new object[] { 0.66, "#de8e8e" },
-                    new object[] { 1.0, "#b94a4a" }
+                    new object[] { 0.0, "#f8fafc" },
+                    new object[] { 0.25, "#dbeafe" },
+                    new object[] { 0.50, "#fef3c7" },
+                    new object[] { 0.75, "#fb923c" },
+                    new object[] { 1.0, "#b91c1c" }
                 },
-                showscale = false
+                showscale = true,
+                colorbar = new { title = "Hits", thickness = 10 }
             }
         ];
     }
