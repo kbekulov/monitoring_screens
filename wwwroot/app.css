@@ -132,6 +132,7 @@ body {
 
 .time-pill {
   min-width: 172px;
+  min-height: 2.35rem;
   display: flex;
   align-items: center;
   justify-content: flex-start;
@@ -178,12 +179,13 @@ body {
 
 .failover-pill {
   min-width: 255px;
+  min-height: 2.35rem;
   display: grid;
   grid-template-columns: 1fr auto;
   align-items: center;
   column-gap: 0.4rem;
   row-gap: 0.08rem;
-  padding: 0.45rem 0.7rem;
+  padding: 0.55rem 0.7rem;
 }
 
 .failover-pill-label {
