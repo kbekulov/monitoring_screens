@@ -1,6 +1,8 @@
 @inject IJSRuntime JS
 
-<div class="@ClassName" style="@Style" @ref="_element"></div>
+<div class="plotly-host @ClassName" style="@Style" @ref="_element">
+    <div class="plotly-fallback">Rendering chart...</div>
+</div>
 
 @code {
     [Parameter] public IReadOnlyList<object>? Data { get; set; }
