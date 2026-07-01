@@ -1,5 +1,4 @@
 bin/
 obj/
 .DS_Store
-Data/*.db
-Data/*.db-*
+appsettings.Development.json

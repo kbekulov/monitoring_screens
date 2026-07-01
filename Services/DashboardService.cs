@@ -1,53 +1,11 @@
 using System.Globalization;
-using Microsoft.EntityFrameworkCore;
 using MonitoringScreens.Blazor.Data;
 using MonitoringScreens.Blazor.Models;
 
 namespace MonitoringScreens.Blazor.Services;
 
-public sealed class DashboardService(MonitoringDbContext db)
+public sealed class DashboardService(IDashboardCatalogRepository catalogRepository)
 {
-    private static readonly (string Name, string Type)[] FallbackExceptionCatalog =
-    [
-        ("WinSCP: Failed to Upload File", "system"),
-        ("MS Graph: failed to create email draft", "system"),
-        ("You must provide values for Folder and Pattern", "system"),
-        ("7 Zip: Wrong Password", "system"),
-        ("Could not execute code stage because exception thrown by code stage: cannot find Column", "internal"),
-        ("Failed to Attach on Navigation Stage \"Attach\"", "internal"),
-        ("Business rule mismatch: duplicate case", "business"),
-        ("Invoice missing approval code", "business")
-    ];
-
-    private static readonly string[] FallbackProcessPool =
-    [
-        "Care Digital Refunds",
-        "GFC Case Investigation",
-        "NPC FLA Investigation",
-        "IAM IBIS Upload",
-        "CFO JE Upload",
-        "RMO Settlement - Keying Batches",
-        "Daily AUSTRAC Extract",
-        "ALM Agent Setup Credit Trac",
-        "Supply Chain - APA",
-        "DRT Comment in CTM",
-        "GSI - Hourly Report",
-        "KYC PEP LVL 2",
-        "Sanctions Screening Refresh",
-        "Customer Onboarding Validation",
-        "Loan Servicing Exception Handler"
-    ];
-
-    private static readonly string[] FallbackSquadPool =
-    [
-        "Baymax",
-        "WALL-E",
-        "ATOM",
-        "Awesom-O",
-        "JARVIS",
-        "Bender"
-    ];
-
     private static readonly DashboardThresholds Thresholds = new();
 
     public DashboardSnapshot BuildSnapshot(DateTimeOffset nowUtc, DashboardOptions options)
@@ -55,7 +13,7 @@ public sealed class DashboardService(MonitoringDbContext db)
         var vilniusNow = ConvertToZone(nowUtc, "Europe/Vilnius");
         var seed = options.Seed ?? int.Parse(vilniusNow.ToString("yyyyMMdd", CultureInfo.InvariantCulture), CultureInfo.InvariantCulture);
         var rng = new Mulberry32(seed);
-        var catalog = LoadCatalog();
+        var catalog = catalogRepository.LoadCatalog();
         var model = BuildModel(vilniusNow, seed, rng, catalog);
         var slopeStats = GetSlopeStats(model, "yesterday");
         var summaries = BuildSummaries(model, slopeStats);
@@ -180,51 +138,6 @@ public sealed class DashboardService(MonitoringDbContext db)
         var tz = TimeZoneInfo.FindSystemTimeZoneById(zoneId);
         return TimeZoneInfo.ConvertTime(timestamp, tz);
     }
-
-    private DashboardCatalog LoadCatalog()
-    {
-        var exceptionCatalog = db.ExceptionDefinitions
-            .AsNoTracking()
-            .Where(x => x.IsActive)
-            .OrderBy(x => x.SortOrder)
-            .ThenBy(x => x.Name)
-            .Select(x => new ExceptionCatalogItem(x.Name, x.Type))
-            .ToList();
-
-        var processPool = db.ProcessDefinitions
-            .AsNoTracking()
-            .Where(x => x.IsActive)
-            .OrderBy(x => x.SortOrder)
-            .ThenBy(x => x.Name)
-            .Select(x => x.Name)
-            .ToList();
-
-        var squadPool = db.SquadDefinitions
-            .AsNoTracking()
-            .Where(x => x.IsActive)
-            .OrderBy(x => x.SortOrder)
-            .ThenBy(x => x.Name)
-            .Select(x => x.Name)
-            .ToList();
-
-        var settings = db.DashboardSettings
-            .AsNoTracking()
-            .ToDictionary(x => x.Key, x => x.Value, StringComparer.OrdinalIgnoreCase);
-
-        return new DashboardCatalog(
-            exceptionCatalog.Count > 0
-                ? exceptionCatalog
-                : FallbackExceptionCatalog.Select(x => new ExceptionCatalogItem(x.Name, x.Type)).ToList(),
-            processPool.Count > 0 ? processPool : FallbackProcessPool.ToList(),
-            squadPool.Count > 0 ? squadPool : FallbackSquadPool.ToList(),
-            ReadIntSetting(settings, "Failover.Chicago.DaysFromNow", 3),
-            ReadIntSetting(settings, "Failover.Reston.DaysFromNow", 2));
-    }
-
-    private static int ReadIntSetting(IReadOnlyDictionary<string, string> settings, string key, int fallback) =>
-        settings.TryGetValue(key, out var rawValue) && int.TryParse(rawValue, CultureInfo.InvariantCulture, out var value)
-            ? value
-            : fallback;
 
     private static DashboardModel BuildModel(DateTimeOffset nowLocal, int seed, Mulberry32 rng, DashboardCatalog catalog)
     {
@@ -767,15 +680,6 @@ public sealed class DashboardService(MonitoringDbContext db)
         public int BurstAmber { get; } = 1;
         public int BurstRed { get; } = 3;
     }
-
-    private sealed record ExceptionCatalogItem(string Name, string Type);
-
-    private sealed record DashboardCatalog(
-        IReadOnlyList<ExceptionCatalogItem> Exceptions,
-        IReadOnlyList<string> Processes,
-        IReadOnlyList<string> Squads,
-        int ChicagoFailoverDays,
-        int RestonFailoverDays);
 
     private sealed class Mulberry32(int seed)
     {
