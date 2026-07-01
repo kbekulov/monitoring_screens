@@ -200,7 +200,7 @@ else
                                         <span class="slope-kpi resolved">Resolved: <strong>@slopeStats.Resolved</strong></span>
                                     </div>
                                     <div class="slope-legend-note">@snapshot.Summaries.Slope</div>
-                                    <PlotlyChart Data="BuildSlopeChartData(snapshot, slopeStats)" Layout="BuildSlopeLayout()" Config="PlotlyConfig" Style="height:340px;" />
+                                    <PlotlyChart Data="BuildSlopeChartData(snapshot, slopeStats)" Layout="BuildSlopeLayout(slopeStats)" Config="PlotlyConfig" Style="height:340px;" />
                                 </div>
                             </div>
                         </div>
@@ -521,34 +521,102 @@ else
 
     private IReadOnlyList<object> BuildSlopeChartData(DashboardSnapshot snapshot, SlopeStats slopeStats)
     {
-        var rows = slopeStats.Rows.Take(8).Reverse().ToList();
-        return
-        [
-            new
+        var rows = slopeStats.Rows
+            .OrderByDescending(x => Math.Abs(x.Delta))
+            .ThenByDescending(x => x.TodayCount)
+            .Take(7)
+            .Reverse()
+            .ToList();
+
+        var data = new List<object>();
+
+        foreach (var row in rows)
+        {
+            data.Add(new
             {
-                type = "bar",
-                orientation = "h",
-                x = rows.Select(x => x.Delta).ToArray(),
-                y = rows.Select(x => x.Name).ToArray(),
-                marker = new
-                {
-                    color = rows.Select(x => x.Delta > 0 ? "#ef4444" : x.Delta < 0 ? "#334155" : "#94a3b8").ToArray()
-                },
-                customdata = rows.Select(x => new object[] { x.TodayCount, x.ComparisonCount, x.RankToday ?? 0, x.RankComparison ?? 0 }).ToArray(),
-                hovertemplate = "%{y}<br>Today: %{customdata[0]}<br>Compare: %{customdata[1]}<br>Rank now: %{customdata[2]}<br>Rank compare: %{customdata[3]}<extra></extra>"
-            }
-        ];
+                type = "scatter",
+                mode = "lines",
+                x = new[] { row.ComparisonCount, row.TodayCount },
+                y = new[] { ShortExceptionName(row.Name), ShortExceptionName(row.Name) },
+                line = new { color = row.Delta > 0 ? "rgba(239,68,68,0.35)" : "rgba(51,65,85,0.28)", width = 3 },
+                hoverinfo = "skip",
+                showlegend = false
+            });
+        }
+
+        data.Add(new
+        {
+            type = "scatter",
+            mode = "markers",
+            x = rows.Select(x => x.ComparisonCount).ToArray(),
+            y = rows.Select(x => ShortExceptionName(x.Name)).ToArray(),
+            marker = new { color = "#94a3b8", size = 9 },
+            name = SlopeMode == "week" ? "7d avg" : "Yesterday",
+            customdata = rows.Select(x => new object[] { x.Name, x.ComparisonCount }).ToArray(),
+            hovertemplate = "%{customdata[0]}<br>Compare: %{customdata[1]}<extra></extra>"
+        });
+
+        data.Add(new
+        {
+            type = "scatter",
+            mode = "markers+text",
+            x = rows.Select(x => x.TodayCount).ToArray(),
+            y = rows.Select(x => ShortExceptionName(x.Name)).ToArray(),
+            marker = new
+            {
+                color = rows.Select(x => x.Delta > 0 ? "#ef4444" : x.Delta < 0 ? "#334155" : "#64748b").ToArray(),
+                size = 12,
+                line = new { color = "#ffffff", width = 1 }
+            },
+            text = rows.Select(x => x.Delta > 0 ? $"+{x.Delta}" : x.Delta.ToString(CultureInfo.InvariantCulture)).ToArray(),
+            textposition = "middle right",
+            textfont = new { color = "#334155", size = 11 },
+            cliponaxis = false,
+            name = "Today",
+            customdata = rows.Select(x => new object[] { x.Name, x.TodayCount, x.Delta }).ToArray(),
+            hovertemplate = "%{customdata[0]}<br>Today: %{customdata[1]}<br>Delta: %{customdata[2]}<extra></extra>"
+        });
+
+        return data;
     }
 
-    private static object BuildSlopeLayout() => new
+    private static object BuildSlopeLayout(SlopeStats slopeStats)
     {
-        margin = new { l = 190, r = 20, t = 10, b = 40 },
-        paper_bgcolor = "rgba(0,0,0,0)",
-        plot_bgcolor = "rgba(0,0,0,0)",
-        xaxis = new { zeroline = true, zerolinecolor = "rgba(15,23,42,0.15)", gridcolor = "rgba(15,23,42,0.06)" },
-        yaxis = new { automargin = true },
-        showlegend = false
-    };
+        var topRows = slopeStats.Rows
+            .OrderByDescending(x => Math.Abs(x.Delta))
+            .ThenByDescending(x => x.TodayCount)
+            .Take(7)
+            .ToList();
+
+        var maxCount = topRows.Count == 0 ? 10 : topRows.Max(x => Math.Max(x.TodayCount, x.ComparisonCount));
+
+        return new
+        {
+            margin = new { l = 190, r = 78, t = 8, b = 44 },
+            paper_bgcolor = "rgba(0,0,0,0)",
+            plot_bgcolor = "rgba(0,0,0,0)",
+            xaxis = new
+            {
+                title = "Daily exception count",
+                range = new[] { -4, maxCount + 4 },
+                gridcolor = "rgba(15,23,42,0.06)",
+                zeroline = false
+            },
+            yaxis = new { automargin = true },
+            legend = new { orientation = "h", y = 1.12 }
+        };
+    }
+
+    private static string ShortExceptionName(string value)
+    {
+        var cleaned = value
+            .Replace("You must provide values for Folder and Pattern", "Missing folder/pattern", StringComparison.OrdinalIgnoreCase)
+            .Replace("Could not execute code stage because exception thrown by code stage: ", "", StringComparison.OrdinalIgnoreCase)
+            .Replace("Business rule mismatch: duplicate case", "Duplicate case rule mismatch", StringComparison.OrdinalIgnoreCase)
+            .Replace("Failed to Attach on Navigation Stage ", "Attach failed: ", StringComparison.OrdinalIgnoreCase);
+
+        return cleaned.Length <= 32 ? cleaned : cleaned[..29] + "...";
+    }
 
     private IReadOnlyList<object> BuildExceptionsChartData(DashboardSnapshot snapshot)
     {
