@@ -307,18 +307,23 @@ public static class PlotlyChartFactory
         return cleaned.Length <= 32 ? cleaned : cleaned[..29] + "...";
     }
 
-    private static object TransparentLayout(dynamic layout) => new
+    private static IReadOnlyDictionary<string, object?> TransparentLayout(object layout)
     {
-        layout.margin,
-        paper_bgcolor = "rgba(0,0,0,0)",
-        plot_bgcolor = "rgba(0,0,0,0)",
-        xaxis = HasProperty(layout, "xaxis") ? layout.xaxis : null,
-        yaxis = HasProperty(layout, "yaxis") ? layout.yaxis : null,
-        legend = HasProperty(layout, "legend") ? layout.legend : null,
-        showlegend = HasProperty(layout, "showlegend") ? layout.showlegend : null,
-        barmode = HasProperty(layout, "barmode") ? layout.barmode : null
-    };
+        var values = new Dictionary<string, object?>
+        {
+            ["paper_bgcolor"] = "rgba(0,0,0,0)",
+            ["plot_bgcolor"] = "rgba(0,0,0,0)"
+        };
 
-    private static bool HasProperty(object value, string propertyName) =>
-        value.GetType().GetProperty(propertyName) is not null;
+        foreach (var property in layout.GetType().GetProperties())
+        {
+            var value = property.GetValue(layout);
+            if (value is not null)
+            {
+                values[property.Name] = value;
+            }
+        }
+
+        return values;
+    }
 }

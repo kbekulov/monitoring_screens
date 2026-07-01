@@ -5,7 +5,7 @@
         {
             <p class="queue-action-reason">@LeadText</p>
         }
-        <PlotlyChart Data="Data" Layout="Layout" Config="PlotlyChartFactory.Config" Style="@ChartStyle" />
+        <PlotlyChart Data="@Data" Layout="@Layout" Config="@PlotlyChartFactory.Config" Style="@ChartStyle" />
         @if (!string.IsNullOrWhiteSpace(Summary))
         {
             <p class="chart-summary">@Summary</p>

@@ -69,7 +69,7 @@ else
                         </div>
 
                         <div class="col-12">
-                            <ExceptionMovementCard Stats="slopeStats" @bind-Mode="SlopeMode" Summary="snapshot.Summaries.Slope" />
+                            <ExceptionMovementCard Stats="slopeStats" @bind-Mode="SlopeMode" Summary="@snapshot.Summaries.Slope" />
                         </div>
 
                         <div class="col-12">
@@ -92,7 +92,7 @@ else
                                 Data="PlotlyChartFactory.BuildBurstChartData(snapshot)"
                                 Layout="PlotlyChartFactory.BuildBurstLayout()"
                                 ChartStyle="height:320px;"
-                                Summary="snapshot.Summaries.Burst" />
+                                Summary="@snapshot.Summaries.Burst" />
                         </div>
 
                         <div class="col-12">
@@ -180,7 +180,7 @@ else
                             Data="PlotlyChartFactory.BuildHeatmapData(snapshot)"
                             Layout="PlotlyChartFactory.BuildHeatmapLayout()"
                             ChartStyle="height:420px;"
-                            Summary="snapshot.Summaries.Heatmap" />
+                            Summary="@snapshot.Summaries.Heatmap" />
                     </div>
 
                     <div class="col-12 col-xl-4">
@@ -208,8 +208,8 @@ else
                             Subtitle="[5m Buckets]"
                             Data="PlotlyChartFactory.BuildQueueStateData(snapshot)"
                             Layout="PlotlyChartFactory.BuildQueueStateLayout()"
-                            LeadText="snapshot.QueueActionReason"
-                            Summary="snapshot.Summaries.QueueState" />
+                            LeadText="@snapshot.QueueActionReason"
+                            Summary="@snapshot.Summaries.QueueState" />
                     </div>
 
                     <div class="col-12 col-xl-4">
@@ -219,7 +219,7 @@ else
                             SectionClass="section-critical"
                             Data="PlotlyChartFactory.BuildRootCauseData(snapshot)"
                             Layout="PlotlyChartFactory.BuildRootCauseLayout()"
-                            Summary="snapshot.Summaries.RootCause" />
+                            Summary="@snapshot.Summaries.RootCause" />
                     </div>
                 </div>
             </section>
