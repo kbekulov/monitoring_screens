@@ -47,7 +47,6 @@ else
                             <span class="fw-semibold">@($"{chicagoCountdown.Hours:00}")</span><span class="unit">hours</span>
                             <span class="fw-semibold">@($"{chicagoCountdown.Minutes:00}")</span><span class="unit">min</span>
                         </span>
-                        <span class="failover-pill-target">Target: @FormatTarget(snapshot.ChicagoFailover)</span>
                     </span>
                     <span class="kpi-pill failover-pill">
                         <span class="failover-pill-label">Reston failover</span>
@@ -56,7 +55,6 @@ else
                             <span class="fw-semibold">@($"{restonCountdown.Hours:00}")</span><span class="unit">hours</span>
                             <span class="fw-semibold">@($"{restonCountdown.Minutes:00}")</span><span class="unit">min</span>
                         </span>
-                        <span class="failover-pill-target">Target: @FormatTarget(snapshot.RestonFailover)</span>
                     </span>
                     <div class="form-check form-switch kpi-pill toggle-pill mb-0 d-flex align-items-center gap-2">
                         <InputCheckbox class="form-check-input m-0" @bind-Value="ForceWarnings" @bind-Value:after="RefreshDashboard" />
@@ -478,12 +476,6 @@ else
         return (remaining.Days, remaining.Hours, remaining.Minutes);
     }
 
-    private static string FormatTarget(FailoverInfo failover)
-    {
-        var local = DashboardService.ConvertToZone(failover.TargetTime, failover.ZoneLabel);
-        return local.ToString("yyyy-MM-dd HH:mm zzz", CultureInfo.InvariantCulture);
-    }
-
     private static string BodyStateClass(string alertState) => alertState switch
     {
         "RED" => "dashboard-red",
@@ -636,7 +628,7 @@ else
 
     private static IReadOnlyList<object> BuildDumbbellChartData(DashboardSnapshot snapshot)
     {
-        var rows = snapshot.Model.SquadDumbbell.OrderBy(x => x.LastMonth).ToList();
+        var rows = snapshot.Model.SquadDumbbell.OrderByDescending(x => Math.Max(x.LastMonth, x.Today)).ToList();
         var data = new List<object>();
 
         foreach (var row in rows)
@@ -645,8 +637,8 @@ else
             {
                 type = "scatter",
                 mode = "lines",
-                x = new[] { row.LastMonth, row.Today },
-                y = new[] { row.Squad, row.Squad },
+                x = new[] { row.Squad, row.Squad },
+                y = new[] { row.LastMonth, row.Today },
                 line = new { color = "rgba(15,23,42,0.25)", width = 3 },
                 hoverinfo = "skip",
                 showlegend = false
@@ -657,8 +649,8 @@ else
         {
             type = "scatter",
             mode = "markers",
-            x = rows.Select(x => x.LastMonth).ToArray(),
-            y = rows.Select(x => x.Squad).ToArray(),
+            x = rows.Select(x => x.Squad).ToArray(),
+            y = rows.Select(x => x.LastMonth).ToArray(),
             marker = new { color = "#111111", size = 11 },
             name = "Last month"
         });
@@ -667,8 +659,8 @@ else
         {
             type = "scatter",
             mode = "markers",
-            x = rows.Select(x => x.Today).ToArray(),
-            y = rows.Select(x => x.Squad).ToArray(),
+            x = rows.Select(x => x.Squad).ToArray(),
+            y = rows.Select(x => x.Today).ToArray(),
             marker = new { color = "#ffffff", line = new { color = "#111111", width = 2 }, size = 11 },
             name = "Today"
         });
@@ -678,11 +670,11 @@ else
 
     private static object BuildDumbbellLayout() => new
     {
-        margin = new { l = 90, r = 20, t = 10, b = 40 },
+        margin = new { l = 45, r = 20, t = 10, b = 80 },
         paper_bgcolor = "rgba(0,0,0,0)",
         plot_bgcolor = "rgba(0,0,0,0)",
-        xaxis = new { gridcolor = "rgba(15,23,42,0.06)" },
-        yaxis = new { automargin = true },
+        xaxis = new { automargin = true, tickangle = -28 },
+        yaxis = new { gridcolor = "rgba(15,23,42,0.06)", rangemode = "tozero" },
         legend = new { orientation = "h", y = 1.12 }
     };
 
