@@ -1,0 +1,779 @@
+@page "/"
+@rendermode InteractiveServer
+@implements IDisposable
+@inject DashboardService DashboardService
+
+@if (Snapshot is null)
+{
+    <main class="container-fluid my-4">
+        <div class="card">
+            <div class="card-body">Loading dashboard...</div>
+        </div>
+    </main>
+}
+else
+{
+    var snapshot = Snapshot;
+    var vilniusClock = GetClock("Europe/Vilnius");
+    var costaRicaClock = GetClock("America/Costa_Rica");
+    var chicagoCountdown = GetCountdown(snapshot.ChicagoFailover);
+    var restonCountdown = GetCountdown(snapshot.RestonFailover);
+    var slopeStats = DashboardService.GetSlopeStats(snapshot.Model, SlopeMode);
+
+    <div class="blazor-dashboard @BodyStateClass(snapshot.AlertState)">
+        <nav class="navbar navbar-expand-lg bg-white border-bottom sticky-top" aria-label="Top navigation">
+            <div class="container-fluid py-2 navbar-shell">
+                <div class="navbar-brand-strip d-flex align-items-center gap-2">
+                    <span class="badge rounded-pill text-bg-dark">RPA</span>
+                    <span class="navbar-brand mb-0 h1 fs-5">RPA Mission Control</span>
+                </div>
+                <div class="navbar-ops">
+                    <span class="kpi-pill time-pill">
+                        <i class="bi bi-clock me-1"></i>
+                        <span class="time-pill-label">Vilnius/LT</span>
+                        <span class="time-pill-value">@vilniusClock.TimeText</span>
+                        <i class="bi @(vilniusClock.IsDay ? "bi-sun-fill" : "bi-moon-stars-fill") ms-2" aria-hidden="true"></i>
+                    </span>
+                    <span class="kpi-pill time-pill">
+                        <i class="bi bi-clock-history me-1"></i>
+                        <span class="time-pill-label">Costa Rica</span>
+                        <span class="time-pill-value">@costaRicaClock.TimeText</span>
+                        <i class="bi @(costaRicaClock.IsDay ? "bi-sun-fill" : "bi-moon-stars-fill") ms-2" aria-hidden="true"></i>
+                    </span>
+                    <span class="kpi-pill failover-pill">
+                        <span class="failover-pill-label">Chicago failover</span>
+                        <span class="countdown countdown-inline">
+                            <span class="fw-semibold">@($"{chicagoCountdown.Days:00}")</span><span class="unit">days</span>
+                            <span class="fw-semibold">@($"{chicagoCountdown.Hours:00}")</span><span class="unit">hours</span>
+                            <span class="fw-semibold">@($"{chicagoCountdown.Minutes:00}")</span><span class="unit">min</span>
+                        </span>
+                        <span class="failover-pill-target">Target: @FormatTarget(snapshot.ChicagoFailover)</span>
+                    </span>
+                    <span class="kpi-pill failover-pill">
+                        <span class="failover-pill-label">Reston failover</span>
+                        <span class="countdown countdown-inline">
+                            <span class="fw-semibold">@($"{restonCountdown.Days:00}")</span><span class="unit">days</span>
+                            <span class="fw-semibold">@($"{restonCountdown.Hours:00}")</span><span class="unit">hours</span>
+                            <span class="fw-semibold">@($"{restonCountdown.Minutes:00}")</span><span class="unit">min</span>
+                        </span>
+                        <span class="failover-pill-target">Target: @FormatTarget(snapshot.RestonFailover)</span>
+                    </span>
+                    <div class="form-check form-switch kpi-pill toggle-pill mb-0 d-flex align-items-center gap-2">
+                        <InputCheckbox class="form-check-input m-0" @bind-Value="ForceWarnings" @bind-Value:after="RefreshDashboard" />
+                        <label class="form-check-label small fw-semibold">Warnings</label>
+                    </div>
+                    <div class="form-check form-switch kpi-pill toggle-pill mb-0 d-flex align-items-center gap-2">
+                        <InputCheckbox class="form-check-input m-0" @bind-Value="ForceFreeze" @bind-Value:after="RefreshDashboard" />
+                        <label class="form-check-label small fw-semibold">Freeze</label>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <main class="container-fluid my-3" aria-label="RPA operations content">
+            <section class="ops-banner ops-banner-top mb-3" aria-label="Dashboard health">
+                <div class="ops-banner-item">
+                    <span class="dot ok"></span>
+                    <strong>Overall Health</strong>
+                    <span>@snapshot.RenderStatus</span>
+                    <small class="ops-subtitle">Alert state: @snapshot.AlertState · owner: @snapshot.ActionOwner</small>
+                </div>
+                <div class="ops-banner-item">
+                    <span class="dot bad"></span>
+                    <strong>DDA Alerts</strong>
+                    <span>@snapshot.Model.Alerts.Count</span>
+                    <small class="ops-subtitle">@snapshot.Summaries.QueueState</small>
+                </div>
+                <div class="ops-banner-item ops-banner-split">
+                    <span class="dot warn"></span>
+                    <strong>Maintenance Snapshot</strong>
+                    <div class="ops-split-metrics" aria-label="Maintenance ticket states">
+                        <div class="ops-split-item">
+                            <span class="ops-split-label">Inbox emails</span>
+                            <span class="ops-split-value">@snapshot.MaintenanceOverview.InboxEmails</span>
+                        </div>
+                        <div class="ops-split-item">
+                            <span class="ops-split-label">To-do</span>
+                            <span class="ops-split-value">@snapshot.MaintenanceOverview.Todo</span>
+                        </div>
+                        <div class="ops-split-item">
+                            <span class="ops-split-label">Worked on</span>
+                            <span class="ops-split-value">@snapshot.MaintenanceOverview.WorkedOn</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="approval-strip mb-3" aria-label="Pending release approvals">
+                <div class="approval-strip-title">Pending release approvals</div>
+                <div class="approval-strip-body">
+                    @foreach (var approval in snapshot.ReleaseApprovals)
+                    {
+                        <span class="breach-chip amber me-2 mb-2">@approval</span>
+                    }
+                </div>
+            </section>
+
+            @if (snapshot.WarningAnnouncements.Count > 0)
+            {
+                <section class="critical-announcement mb-3" aria-live="assertive" aria-label="Critical announcements">
+                    <div class="critical-announcement-label"><i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i><span>Warnings</span></div>
+                    <div class="critical-announcement-divider" aria-hidden="true"></div>
+                    <div class="critical-announcement-text">@string.Join(" • ", snapshot.WarningAnnouncements.Select(x => x.Title))</div>
+                </section>
+            }
+
+            @if (snapshot.ShowFreezeBanner)
+            {
+                <section class="freeze-announcement mb-3" aria-live="polite" aria-label="Freeze announcement">
+                    <div class="freeze-announcement-label"><i class="bi bi-snow" aria-hidden="true"></i><span>Freeze</span></div>
+                    <div class="freeze-announcement-divider" aria-hidden="true"></div>
+                    <div class="freeze-announcement-text">Releases to Prod are forbidden</div>
+                </section>
+            }
+
+            <section class="row g-3 dashboard-main mb-4">
+                <div class="col-12 col-xl-6">
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <div class="breach-focus breach-focus-compact maintenance-panel h-100">
+                                <div class="breach-head maintenance-head">
+                                    <strong>Currently in Maintenance</strong>
+                                    <div class="maintenance-legend">
+                                        <span class="maintenance-legend-item"><i class="bi bi-play-circle-fill status-icon status-running"></i> Running</span>
+                                        <span class="maintenance-legend-item"><i class="bi bi-pause-circle-fill status-icon status-retired"></i> Retired</span>
+                                    </div>
+                                </div>
+                                <div class="breach-chips">
+                                    @foreach (var item in snapshot.MaintenanceProcesses)
+                                    {
+                                        <span class="breach-chip maintenance-chip @(item.Status == "retired" ? "maintenance-retired" : "maintenance-running")">
+                                            <i class="bi @(item.Status == "retired" ? "bi-pause-circle-fill status-icon status-retired" : "bi-play-circle-fill status-icon status-running")"></i>
+                                            @item.Process
+                                        </span>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-12">
+                            <div class="card section-neutral h-100 low-priority-card">
+                                <div class="card-header">Top Offenders <span class="mini-muted">[Lists]</span></div>
+                                <div class="card-body">
+                                    <div class="row g-3">
+                                        <div class="col-12 col-md-6">
+                                            <div class="fw-semibold mb-2">Processes by highest exceptions</div>
+                                            <ul class="list-unstyled list-tight list-compact mb-0">
+                                                @foreach (var item in snapshot.Model.TopProcesses.ByExceptions)
+                                                {
+                                                    <li class="list-row"><span>@item.Name</span><strong>@item.Count</strong></li>
+                                                }
+                                            </ul>
+                                        </div>
+                                        <div class="col-12 col-md-6">
+                                            <div class="fw-semibold mb-2">Breaching threshold <span class="kpi-pill ms-1">&gt;10% exceptions</span></div>
+                                            <ul class="list-unstyled list-tight list-compact mb-0">
+                                                @foreach (var item in snapshot.Model.TopProcesses.ByBreaching.Take(8))
+                                                {
+                                                    <li class="list-row"><span>@item.Name</span><strong>@($"{item.ExceptionRate:P0}")</strong></li>
+                                                }
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-12">
+                            <div class="card section-critical">
+                                <div class="card-header d-flex align-items-center justify-content-between">
+                                    <div>Top Common Exceptions <span class="mini-muted">[Slope Graph]</span></div>
+                                    <div class="btn-group btn-group-sm" role="group" aria-label="Slope compare mode">
+                                        <button type="button" class="btn btn-outline-secondary slope-mode-btn @(SlopeMode == "yesterday" ? "active" : null)" @onclick='() => SetSlopeMode("yesterday")'>Today vs Yesterday</button>
+                                        <button type="button" class="btn btn-outline-secondary slope-mode-btn @(SlopeMode == "week" ? "active" : null)" @onclick='() => SetSlopeMode("week")'>Today vs 7d Avg</button>
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    <div class="slope-kpis">
+                                        <span class="slope-kpi improve">Improved ▼ <strong>@slopeStats.Improved</strong></span>
+                                        <span class="slope-kpi worsen">Worsened ▲ <strong>@slopeStats.Worsened</strong></span>
+                                        <span class="slope-kpi stable">Unchanged: <strong>@slopeStats.Unchanged</strong></span>
+                                        <span class="slope-kpi new">New today: <strong>@slopeStats.NewToday</strong></span>
+                                        <span class="slope-kpi resolved">Resolved: <strong>@slopeStats.Resolved</strong></span>
+                                    </div>
+                                    <div class="slope-legend-note">@snapshot.Summaries.Slope</div>
+                                    <PlotlyChart Data="BuildSlopeChartData(snapshot, slopeStats)" Layout="BuildSlopeLayout()" Config="PlotlyConfig" Style="height:340px;" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-12">
+                            <div class="card section-neutral h-100">
+                                <div class="card-header d-flex align-items-center justify-content-between">
+                                    <div>Robot State Counts <span class="mini-muted">[Daily Delta]</span></div>
+                                    <span class="queue-action-badge @(RobotDeltaBadgeClass(snapshot))">@RobotDeltaBadge(snapshot)</span>
+                                </div>
+                                <div class="card-body">
+                                    <div class="queue-action-reason mt-0 mb-3">@snapshot.Summaries.RobotCounts</div>
+                                    <div class="robot-status-grid">
+                                        <div class="robot-status-card">
+                                            <span class="robot-status-label">Running today</span>
+                                            <strong class="robot-status-value">@snapshot.Model.Robots.Today.Running</strong>
+                                            <span class="robot-status-delta @DeltaClass(snapshot.Model.Robots.Today.Running - snapshot.Model.Robots.Yesterday.Running, true)">@DeltaText(snapshot.Model.Robots.Today.Running - snapshot.Model.Robots.Yesterday.Running)</span>
+                                        </div>
+                                        <div class="robot-status-card">
+                                            <span class="robot-status-label">Retired today</span>
+                                            <strong class="robot-status-value">@snapshot.Model.Robots.Today.Retired</strong>
+                                            <span class="robot-status-delta @DeltaClass(snapshot.Model.Robots.Today.Retired - snapshot.Model.Robots.Yesterday.Retired, false)">@DeltaText(snapshot.Model.Robots.Today.Retired - snapshot.Model.Robots.Yesterday.Retired)</span>
+                                        </div>
+                                        <div class="robot-status-card">
+                                            <span class="robot-status-label">Running yesterday</span>
+                                            <strong class="robot-status-value">@snapshot.Model.Robots.Yesterday.Running</strong>
+                                        </div>
+                                        <div class="robot-status-card">
+                                            <span class="robot-status-label">Retired yesterday</span>
+                                            <strong class="robot-status-value">@snapshot.Model.Robots.Yesterday.Retired</strong>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-12 col-xl-6">
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <div class="breach-focus breach-focus-compact potential-panel h-100">
+                                <div class="breach-head potential-head">
+                                    <strong>Potentially Attention Required</strong>
+                                    <div class="potential-legend">
+                                        <span class="potential-legend-item"><i class="bi bi-graph-up-arrow status-icon status-many"></i> Many Exceptions</span>
+                                        <span class="potential-legend-item"><i class="bi bi-exclamation-octagon-fill status-icon status-session-fail"></i> Sessions Failing</span>
+                                    </div>
+                                </div>
+                                <div class="breach-chips">
+                                    @foreach (var item in snapshot.PotentialProcesses)
+                                    {
+                                        <span class="breach-chip potential-chip @(item.AttentionType == "SESSIONS_FAILING" ? "potential-session-fail" : "potential-many")">
+                                            <i class="bi @(item.AttentionType == "SESSIONS_FAILING" ? "bi-exclamation-octagon-fill status-icon status-session-fail" : "bi-graph-up-arrow status-icon status-many")"></i>
+                                            @item.Process
+                                        </span>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-12">
+                            <div class="card section-critical">
+                                <div class="card-header">Cumulative Session Anomaly <span class="mini-muted">[Anomaly Band]</span></div>
+                                <div class="card-body">
+                                    <PlotlyChart Data="BuildBurstChartData(snapshot)" Layout="BuildBurstLayout()" Config="PlotlyConfig" Style="height:320px;" />
+                                    <p class="chart-summary">@snapshot.Summaries.Burst</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-12">
+                            <div class="card section-critical">
+                                <div class="card-header d-flex justify-content-between align-items-center">
+                                    <div>Alerts by Squad <span class="mini-muted">[Actionable vs nonactionable]</span></div>
+                                    <div class="d-flex align-items-center gap-3">
+                                        <div class="mini-muted"><span class="legend-dot-black"></span>last month</div>
+                                        <div class="mini-muted"><span class="legend-dot-white"></span>today</div>
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    <PlotlyChart Data="BuildDumbbellChartData(snapshot)" Layout="BuildDumbbellLayout()" Config="PlotlyConfig" Style="height:360px;" />
+                                    <p class="chart-summary">@snapshot.Summaries.Dumbbell</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-12">
+                            <div class="card section-neutral">
+                                <div class="card-header">Top Alerts + Tickets <span class="mini-muted">[breach + hold time + weekends/holidays]</span></div>
+                                <div class="card-body">
+                                    <div class="alerts-risk-strip mb-3">
+                                        <div class="alerts-risk-item risk-breached">
+                                            <span class="alerts-risk-label">Breached</span>
+                                            <strong>@snapshot.AlertTotals.Breached</strong>
+                                        </div>
+                                        <div class="alerts-risk-item risk-atrisk">
+                                            <span class="alerts-risk-label">At risk</span>
+                                            <strong>@snapshot.AlertTotals.AtRisk</strong>
+                                        </div>
+                                        <div class="alerts-risk-item risk-ontrack">
+                                            <span class="alerts-risk-label">On track</span>
+                                            <strong>@snapshot.AlertTotals.OnTrack</strong>
+                                        </div>
+                                    </div>
+                                    <div class="alerts-next-action mb-3">@snapshot.AlertsNextAction</div>
+                                    <div class="row g-3">
+                                        <div class="col-12 col-lg-5">
+                                            <div class="fw-semibold mb-2">Alert types by volume</div>
+                                            <ul class="list-unstyled list-tight list-compact mb-0">
+                                                @foreach (var group in snapshot.AlertGroups)
+                                                {
+                                                    <li class="list-row"><span>@group.Name</span><strong>@group.Count</strong></li>
+                                                }
+                                            </ul>
+                                        </div>
+                                        <div class="col-12 col-lg-7">
+                                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                                <div class="fw-semibold">Priority ticket lanes</div>
+                                                <div class="mini-muted">SLA status + owner routing</div>
+                                            </div>
+                                            <div class="tickets-lane">
+                                                @foreach (var ticket in snapshot.TicketLanes)
+                                                {
+                                                    <div class="ticket-lane-row @ticket.Status">
+                                                        <div class="ticket-lane-marker"></div>
+                                                        <div>
+                                                            <div class="ticket-lane-title">@ticket.Key - @ticket.Title</div>
+                                                            <div class="ticket-lane-meta">Owner: @ticket.Owner | Last update: @ticket.LastUpdateHours h ago</div>
+                                                        </div>
+                                                        <div class="ticket-lane-right">
+                                                            <span class="ticket-lane-status @ticket.Status">@TicketStatusLabel(ticket.Status)</span>
+                                                            <div class="ticket-lane-meta mt-1">@ticket.Days d unresolved</div>
+                                                        </div>
+                                                    </div>
+                                                }
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="supplemental-grid" aria-label="Additional analysis">
+                <div class="row g-3">
+                    <div class="col-12">
+                        <div class="card section-critical">
+                            <div class="card-header">Exception Concentration by Process <span class="mini-muted">[Last 14d]</span></div>
+                            <div class="card-body">
+                                <PlotlyChart Data="BuildHeatmapData(snapshot)" Layout="BuildHeatmapLayout()" Config="PlotlyConfig" Style="height:420px;" />
+                                <p class="chart-summary">@snapshot.Summaries.Heatmap</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-12 col-xl-4">
+                        <div class="card section-neutral">
+                            <div class="card-header d-flex align-items-center justify-content-between">
+                                <div>Total Exceptions <span class="mini-muted">[Timelines]</span></div>
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="btn-group btn-group-sm" role="group" aria-label="Exceptions timeline mode">
+                                        <button type="button" class="btn btn-outline-secondary exceptions-mode-btn @(ExceptionsMode == "hourly" ? "active" : null)" @onclick='() => SetExceptionsMode("hourly")'>Hourly</button>
+                                        <button type="button" class="btn btn-outline-secondary exceptions-mode-btn @(ExceptionsMode == "daily" ? "active" : null)" @onclick='() => SetExceptionsMode("daily")'>Daily</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <p class="queue-action-reason">@snapshot.ExceptionsActionReason</p>
+                                <PlotlyChart Data="BuildExceptionsChartData(snapshot)" Layout="BuildExceptionsLayout()" Config="PlotlyConfig" Style="height:300px;" />
+                                <p class="chart-summary">@(ExceptionsMode == "hourly" ? snapshot.Summaries.Hourly : snapshot.Summaries.Daily)</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-12 col-xl-4">
+                        <div class="card section-neutral">
+                            <div class="card-header">Work Queue State Composition <span class="mini-muted">[5m Buckets]</span></div>
+                            <div class="card-body">
+                                <p class="queue-action-reason">@snapshot.QueueActionReason</p>
+                                <PlotlyChart Data="BuildQueueStateData(snapshot)" Layout="BuildQueueStateLayout()" Config="PlotlyConfig" Style="height:300px;" />
+                                <p class="chart-summary">@snapshot.Summaries.QueueState</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-12 col-xl-4">
+                        <div class="card section-critical">
+                            <div class="card-header">Root Cause Split <span class="mini-muted">[Day / Week / Month]</span></div>
+                            <div class="card-body">
+                                <PlotlyChart Data="BuildRootCauseData(snapshot)" Layout="BuildRootCauseLayout()" Config="PlotlyConfig" Style="height:300px;" />
+                                <p class="chart-summary">@snapshot.Summaries.RootCause</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+}
+
+@code {
+    private DashboardSnapshot? Snapshot;
+    private string SlopeMode { get; set; } = "yesterday";
+    private string ExceptionsMode { get; set; } = "hourly";
+    private bool ForceWarnings { get; set; } = true;
+    private bool ForceFreeze { get; set; }
+    private DateTimeOffset CurrentTime { get; set; } = DateTimeOffset.UtcNow;
+    private DateTimeOffset NextRefreshAt { get; set; }
+    private PeriodicTimer? _timer;
+    private CancellationTokenSource? _cts;
+
+    private static object PlotlyConfig => new { responsive = true, displayModeBar = false };
+
+    protected override void OnInitialized()
+    {
+        RefreshDashboard();
+        _cts = new CancellationTokenSource();
+        _ = RunClockLoopAsync(_cts.Token);
+    }
+
+    private async Task RunClockLoopAsync(CancellationToken token)
+    {
+        _timer = new PeriodicTimer(TimeSpan.FromSeconds(1));
+
+        try
+        {
+            while (await _timer.WaitForNextTickAsync(token))
+            {
+                CurrentTime = DateTimeOffset.UtcNow;
+                if (CurrentTime >= NextRefreshAt)
+                {
+                    await InvokeAsync(RefreshDashboard);
+                }
+                else
+                {
+                    await InvokeAsync(StateHasChanged);
+                }
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+    }
+
+    private void RefreshDashboard()
+    {
+        CurrentTime = DateTimeOffset.UtcNow;
+        Snapshot = DashboardService.BuildSnapshot(CurrentTime, new DashboardOptions(null, ForceWarnings, ForceFreeze));
+        NextRefreshAt = CurrentTime.AddMinutes(5);
+        StateHasChanged();
+    }
+
+    private void SetSlopeMode(string mode) => SlopeMode = mode;
+    private void SetExceptionsMode(string mode) => ExceptionsMode = mode;
+
+    private (string TimeText, bool IsDay) GetClock(string zoneId)
+    {
+        var local = DashboardService.ConvertToZone(CurrentTime, zoneId);
+        return (local.ToString("HH:mm:ss"), local.Hour is >= 7 and < 19);
+    }
+
+    private (int Days, int Hours, int Minutes) GetCountdown(FailoverInfo failover)
+    {
+        var remaining = failover.TargetTime - CurrentTime;
+        if (remaining < TimeSpan.Zero)
+        {
+            return (0, 0, 0);
+        }
+
+        return (remaining.Days, remaining.Hours, remaining.Minutes);
+    }
+
+    private static string FormatTarget(FailoverInfo failover)
+    {
+        var local = DashboardService.ConvertToZone(failover.TargetTime, failover.ZoneLabel);
+        return local.ToString("yyyy-MM-dd HH:mm zzz", CultureInfo.InvariantCulture);
+    }
+
+    private static string BodyStateClass(string alertState) => alertState switch
+    {
+        "RED" => "dashboard-red",
+        "AMBER" => "dashboard-amber",
+        _ => "dashboard-green"
+    };
+
+    private static string DeltaText(int delta) => delta switch
+    {
+        > 0 => $"▲ {delta} vs yesterday",
+        < 0 => $"▼ {Math.Abs(delta)} vs yesterday",
+        _ => "No change vs yesterday"
+    };
+
+    private static string DeltaClass(int delta, bool positiveIsGood)
+    {
+        if (delta == 0)
+        {
+            return "neutral";
+        }
+
+        return (delta > 0) == positiveIsGood ? "positive" : "negative";
+    }
+
+    private static string RobotDeltaBadge(DashboardSnapshot snapshot)
+    {
+        var diff = snapshot.Model.Robots.Today.Running - snapshot.Model.Robots.Yesterday.Running;
+        return diff >= 0 ? "Stable" : "Watch";
+    }
+
+    private static string RobotDeltaBadgeClass(DashboardSnapshot snapshot)
+    {
+        var diff = snapshot.Model.Robots.Today.Running - snapshot.Model.Robots.Yesterday.Running;
+        return diff >= 0 ? "queue-action-stable" : "queue-action-watch";
+    }
+
+    private static string TicketStatusLabel(string status) => status switch
+    {
+        "breached" => "Breached",
+        "at-risk" => "At risk",
+        _ => "On track"
+    };
+
+    private IReadOnlyList<object> BuildSlopeChartData(DashboardSnapshot snapshot, SlopeStats slopeStats)
+    {
+        var rows = slopeStats.Rows.Take(8).Reverse().ToList();
+        return
+        [
+            new
+            {
+                type = "bar",
+                orientation = "h",
+                x = rows.Select(x => x.Delta).ToArray(),
+                y = rows.Select(x => x.Name).ToArray(),
+                marker = new
+                {
+                    color = rows.Select(x => x.Delta > 0 ? "#ef4444" : x.Delta < 0 ? "#334155" : "#94a3b8").ToArray()
+                },
+                customdata = rows.Select(x => new object[] { x.TodayCount, x.ComparisonCount, x.RankToday ?? 0, x.RankComparison ?? 0 }).ToArray(),
+                hovertemplate = "%{y}<br>Today: %{customdata[0]}<br>Compare: %{customdata[1]}<br>Rank now: %{customdata[2]}<br>Rank compare: %{customdata[3]}<extra></extra>"
+            }
+        ];
+    }
+
+    private static object BuildSlopeLayout() => new
+    {
+        margin = new { l = 190, r = 20, t = 10, b = 40 },
+        paper_bgcolor = "rgba(0,0,0,0)",
+        plot_bgcolor = "rgba(0,0,0,0)",
+        xaxis = new { zeroline = true, zerolinecolor = "rgba(15,23,42,0.15)", gridcolor = "rgba(15,23,42,0.06)" },
+        yaxis = new { automargin = true },
+        showlegend = false
+    };
+
+    private IReadOnlyList<object> BuildExceptionsChartData(DashboardSnapshot snapshot)
+    {
+        var series = ExceptionsMode == "hourly" ? snapshot.Model.HourlyExceptions : snapshot.Model.DailyExceptions;
+        return
+        [
+            new
+            {
+                type = "scatter",
+                mode = "lines+markers",
+                x = series.Labels.ToArray(),
+                y = series.Values.ToArray(),
+                line = new { color = "#1d4ed8", width = 3 },
+                marker = new { color = "#0f172a", size = 7 },
+                fill = "tozeroy",
+                fillcolor = "rgba(59,130,246,0.12)"
+            }
+        ];
+    }
+
+    private object BuildExceptionsLayout() => new
+    {
+        margin = new { l = 40, r = 20, t = 10, b = 40 },
+        paper_bgcolor = "rgba(0,0,0,0)",
+        plot_bgcolor = "rgba(0,0,0,0)",
+        xaxis = new { automargin = true, tickangle = ExceptionsMode == "hourly" ? 0 : -35 },
+        yaxis = new { gridcolor = "rgba(15,23,42,0.06)" },
+        showlegend = false
+    };
+
+    private static IReadOnlyList<object> BuildBurstChartData(DashboardSnapshot snapshot)
+    {
+        var model = snapshot.Model.BurstDetector;
+        return
+        [
+            new
+            {
+                type = "scatter",
+                mode = "lines",
+                x = model.Labels.ToArray(),
+                y = model.Baseline.ToArray(),
+                line = new { color = "#94a3b8", dash = "dot", width = 2 },
+                name = "Baseline"
+            },
+            new
+            {
+                type = "scatter",
+                mode = "lines",
+                x = model.Labels.ToArray(),
+                y = model.Upper.ToArray(),
+                line = new { color = "#ef4444", dash = "dash", width = 2 },
+                name = "Upper band"
+            },
+            new
+            {
+                type = "scatter",
+                mode = "lines+markers",
+                x = model.Labels.ToArray(),
+                y = model.Values.ToArray(),
+                line = new { color = "#0f172a", width = 3 },
+                marker = new { color = "#f97316", size = 7 },
+                fill = "tozeroy",
+                fillcolor = "rgba(249,115,22,0.12)",
+                name = "Burst"
+            }
+        ];
+    }
+
+    private static object BuildBurstLayout() => new
+    {
+        margin = new { l = 40, r = 20, t = 10, b = 40 },
+        paper_bgcolor = "rgba(0,0,0,0)",
+        plot_bgcolor = "rgba(0,0,0,0)",
+        yaxis = new { gridcolor = "rgba(15,23,42,0.06)" },
+        legend = new { orientation = "h", y = 1.12 }
+    };
+
+    private static IReadOnlyList<object> BuildDumbbellChartData(DashboardSnapshot snapshot)
+    {
+        var rows = snapshot.Model.SquadDumbbell.OrderBy(x => x.LastMonth).ToList();
+        var data = new List<object>();
+
+        foreach (var row in rows)
+        {
+            data.Add(new
+            {
+                type = "scatter",
+                mode = "lines",
+                x = new[] { row.LastMonth, row.Today },
+                y = new[] { row.Squad, row.Squad },
+                line = new { color = "rgba(15,23,42,0.25)", width = 3 },
+                hoverinfo = "skip",
+                showlegend = false
+            });
+        }
+
+        data.Add(new
+        {
+            type = "scatter",
+            mode = "markers",
+            x = rows.Select(x => x.LastMonth).ToArray(),
+            y = rows.Select(x => x.Squad).ToArray(),
+            marker = new { color = "#111111", size = 11 },
+            name = "Last month"
+        });
+
+        data.Add(new
+        {
+            type = "scatter",
+            mode = "markers",
+            x = rows.Select(x => x.Today).ToArray(),
+            y = rows.Select(x => x.Squad).ToArray(),
+            marker = new { color = "#ffffff", line = new { color = "#111111", width = 2 }, size = 11 },
+            name = "Today"
+        });
+
+        return data;
+    }
+
+    private static object BuildDumbbellLayout() => new
+    {
+        margin = new { l = 90, r = 20, t = 10, b = 40 },
+        paper_bgcolor = "rgba(0,0,0,0)",
+        plot_bgcolor = "rgba(0,0,0,0)",
+        xaxis = new { gridcolor = "rgba(15,23,42,0.06)" },
+        yaxis = new { automargin = true },
+        legend = new { orientation = "h", y = 1.12 }
+    };
+
+    private static IReadOnlyList<object> BuildHeatmapData(DashboardSnapshot snapshot)
+    {
+        var processes = snapshot.Model.OutOfBoundsHeatmap.Processes.ToArray();
+        var days = snapshot.Model.OutOfBoundsHeatmap.Days.ToArray();
+        var z = processes
+            .Select(process => days
+                .Select(day => snapshot.Model.OutOfBoundsHeatmap.Values.First(x => x.Process == process && x.Day == day).Value)
+                .Cast<object>()
+                .ToArray())
+            .ToArray();
+
+        return
+        [
+            new
+            {
+                type = "heatmap",
+                x = days,
+                y = processes,
+                z,
+                colorscale = new object[]
+                {
+                    new object[] { 0.0, "#f8e4e4" },
+                    new object[] { 0.33, "#efc3c3" },
+                    new object[] { 0.66, "#de8e8e" },
+                    new object[] { 1.0, "#b94a4a" }
+                },
+                showscale = false
+            }
+        ];
+    }
+
+    private static object BuildHeatmapLayout() => new
+    {
+        margin = new { l = 150, r = 20, t = 10, b = 40 },
+        paper_bgcolor = "rgba(0,0,0,0)",
+        plot_bgcolor = "rgba(0,0,0,0)",
+        xaxis = new { tickangle = -35 },
+        yaxis = new { automargin = true }
+    };
+
+    private static IReadOnlyList<object> BuildQueueStateData(DashboardSnapshot snapshot)
+    {
+        var queue = snapshot.Model.QueueState;
+        return
+        [
+            new { type = "bar", name = "Pending", x = queue.Labels.ToArray(), y = queue.Pending.ToArray(), marker = new { color = "#f59e0b" } },
+            new { type = "bar", name = "Locked", x = queue.Labels.ToArray(), y = queue.Locked.ToArray(), marker = new { color = "#3b82f6" } },
+            new { type = "bar", name = "Complete", x = queue.Labels.ToArray(), y = queue.Complete.ToArray(), marker = new { color = "#16a34a" } },
+            new { type = "bar", name = "Exception", x = queue.Labels.ToArray(), y = queue.Exception.ToArray(), marker = new { color = "#ef4444" } },
+            new { type = "bar", name = "Deferred", x = queue.Labels.ToArray(), y = queue.Deferred.ToArray(), marker = new { color = "#94a3b8" } }
+        ];
+    }
+
+    private static object BuildQueueStateLayout() => new
+    {
+        barmode = "stack",
+        margin = new { l = 40, r = 20, t = 10, b = 40 },
+        paper_bgcolor = "rgba(0,0,0,0)",
+        plot_bgcolor = "rgba(0,0,0,0)",
+        yaxis = new { gridcolor = "rgba(15,23,42,0.06)" },
+        legend = new { orientation = "h", y = 1.12 }
+    };
+
+    private static IReadOnlyList<object> BuildRootCauseData(DashboardSnapshot snapshot)
+    {
+        var root = snapshot.Model.RootCauseSplit;
+        return
+        [
+            new { type = "bar", name = "Environment", x = root.Labels.ToArray(), y = root.Environment.ToArray(), marker = new { color = "#ef4444" } },
+            new { type = "bar", name = "Code", x = root.Labels.ToArray(), y = root.Code.ToArray(), marker = new { color = "#0f172a" } },
+            new { type = "bar", name = "Business Inquiry", x = root.Labels.ToArray(), y = root.BusinessInquiry.ToArray(), marker = new { color = "#64748b" } }
+        ];
+    }
+
+    private static object BuildRootCauseLayout() => new
+    {
+        barmode = "group",
+        margin = new { l = 40, r = 20, t = 10, b = 40 },
+        paper_bgcolor = "rgba(0,0,0,0)",
+        plot_bgcolor = "rgba(0,0,0,0)",
+        yaxis = new { gridcolor = "rgba(15,23,42,0.06)" },
+        legend = new { orientation = "h", y = 1.12 }
+    };
+
+    public void Dispose()
+    {
+        _cts?.Cancel();
+        _timer?.Dispose();
+        _cts?.Dispose();
+    }
+}
